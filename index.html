@@ -3,83 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍪 Cookie Clicker DINGUE 🍪</title>
+    <title>Warsligue - Bataille en Ligne</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="particle-container" id="particles"></div>
-    
-    <div class="header">
-        <h1 class="title">🍪 COOKIE EMPIRE 🍪</h1>
-        <div class="stats">
-            <div class="stat-box">
-                <span class="stat-label">Cookies</span>
-                <span class="stat-value" id="cookieCount">0</span>
-            </div>
-            <div class="stat-box">
-                <span class="stat-label">Par seconde</span>
-                <span class="stat-value" id="cookiesPerSecond">0</span>
-            </div>
-            <div class="stat-box">
-                <span class="stat-label">Total produit</span>
-                <span class="stat-value" id="totalCookies">0</span>
-            </div>
+    <!-- Écran de chargement -->
+    <div id="loading-screen" class="screen active">
+        <div class="logo-container">
+            <h1 class="game-title">WARSLIGUE</h1>
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Chargement...</p>
         </div>
     </div>
 
-    <div class="main-container">
-        <div class="cookie-section">
-            <div class="cookie-container">
-                <div class="cookie-glow"></div>
-                <button class="cookie-button" id="cookieBtn">
-                    <div class="cookie">
-                        <div class="cookie-shine"></div>
-                        <div class="chip chip1"></div>
-                        <div class="chip chip2"></div>
-                        <div class="chip chip3"></div>
-                        <div class="chip chip4"></div>
-                        <div class="chip chip5"></div>
-                        <div class="chip chip6"></div>
+    <!-- Écran de connexion/création de compte -->
+    <div id="auth-screen" class="screen">
+        <div class="auth-container">
+            <h1 class="game-title">WARSLIGUE</h1>
+            
+            <div id="login-form" class="auth-form active">
+                <h2>Connexion</h2>
+                <input type="email" id="login-email" placeholder="Email" required>
+                <input type="password" id="login-password" placeholder="Mot de passe" required>
+                <button id="login-btn" class="btn-primary">Se connecter</button>
+                <p class="auth-switch">Pas de compte ? <span id="show-register">Créer un compte</span></p>
+            </div>
+
+            <div id="register-form" class="auth-form">
+                <h2>Créer un compte</h2>
+                <input type="text" id="register-username" placeholder="Nom d'utilisateur" required maxlength="15">
+                <input type="email" id="register-email" placeholder="Email" required>
+                <input type="password" id="register-password" placeholder="Mot de passe (min 6 caractères)" required>
+                <button id="register-btn" class="btn-primary">Créer</button>
+                <p class="auth-switch">Déjà un compte ? <span id="show-login">Se connecter</span></p>
+            </div>
+
+            <div class="error-message" id="auth-error"></div>
+        </div>
+    </div>
+
+    <!-- Menu principal -->
+    <div id="main-menu" class="screen">
+        <div class="menu-header">
+            <div class="player-info">
+                <div class="player-avatar" id="player-avatar"></div>
+                <div class="player-stats">
+                    <h3 id="player-name">Joueur</h3>
+                    <div class="trophies">
+                        <span class="trophy-icon">🏆</span>
+                        <span id="player-trophies">0</span>
                     </div>
+                </div>
+            </div>
+            <button id="logout-btn" class="btn-secondary">Déconnexion</button>
+        </div>
+
+        <div class="menu-content">
+            <h1 class="game-title">WARSLIGUE</h1>
+            
+            <div class="menu-buttons">
+                <button id="play-btn" class="btn-large btn-primary">
+                    <span class="btn-icon">⚔️</span>
+                    <span>JOUER</span>
                 </button>
-                <div class="click-text" id="clickValue">+1</div>
-            </div>
-            
-            <div class="multiplier-section">
-                <h3>🚀 MULTIPLICATEURS</h3>
-                <div class="multipliers" id="multipliers"></div>
-            </div>
-        </div>
-
-        <div class="shop-section">
-            <h2>🏪 BOUTIQUE D'AMÉLIORATIONS</h2>
-            <div class="shop-tabs">
-                <button class="tab active" data-tab="buildings">Bâtiments</button>
-                <button class="tab" data-tab="upgrades">Améliorations</button>
-            </div>
-            
-            <div class="shop-content">
-                <div class="shop-category active" id="buildings">
-                    <div class="shop-items" id="buildingsList"></div>
-                </div>
-                <div class="shop-category" id="upgrades">
-                    <div class="shop-items" id="upgradesList"></div>
-                </div>
+                <button id="leaderboard-btn" class="btn-large btn-secondary">
+                    <span class="btn-icon">🏅</span>
+                    <span>CLASSEMENT</span>
+                </button>
+                <button id="profile-btn" class="btn-large btn-secondary">
+                    <span class="btn-icon">👤</span>
+                    <span>PROFIL</span>
+                </button>
             </div>
         </div>
     </div>
 
-    <div class="achievements-panel" id="achievementsPanel">
-        <h3>🏆 SUCCÈS</h3>
-        <div class="achievements-grid" id="achievementsList"></div>
+    <!-- Écran de recherche de match -->
+    <div id="matchmaking-screen" class="screen">
+        <div class="matchmaking-container">
+            <h2>Recherche d'adversaire...</h2>
+            <div class="matchmaking-animation">
+                <div class="pulse-circle"></div>
+                <div class="pulse-circle delay-1"></div>
+                <div class="pulse-circle delay-2"></div>
+            </div>
+            <p class="matchmaking-text">Trophées: <span id="mm-trophies">0</span></p>
+            <button id="cancel-matchmaking" class="btn-secondary">Annuler</button>
+        </div>
     </div>
 
-    <button class="toggle-achievements" id="toggleAchievements">
-        🏆 <span id="achievementCount">0</span>
-    </button>
+    <!-- Écran de jeu -->
+    <div id="game-screen" class="screen">
+        <div class="game-hud">
+            <div class="hud-top">
+                <div class="player-hud">
+                    <div class="hp-bar">
+                        <div class="hp-fill" id="player-hp"></div>
+                    </div>
+                    <span id="player-game-name">Vous</span>
+                </div>
+                <div class="timer" id="game-timer">3:00</div>
+                <div class="opponent-hud">
+                    <span id="opponent-game-name">Adversaire</span>
+                    <div class="hp-bar">
+                        <div class="hp-fill" id="opponent-hp"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <div class="floating-cookies" id="floatingCookies"></div>
+        <canvas id="game-canvas"></canvas>
 
+        <div class="game-controls">
+            <div class="joystick-container">
+                <div id="joystick" class="joystick">
+                    <div class="joystick-knob"></div>
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button id="attack-btn" class="btn-attack">⚡</button>
+                <button id="special-btn" class="btn-special">💥</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Écran de fin de match -->
+    <div id="result-screen" class="screen">
+        <div class="result-container">
+            <h2 id="result-title" class="result-title">VICTOIRE!</h2>
+            <div class="result-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Trophées</span>
+                    <span id="result-trophies" class="stat-value trophy-change">+8 🏆</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total</span>
+                    <span id="result-total" class="stat-value">108 🏆</span>
+                </div>
+            </div>
+            <button id="return-menu-btn" class="btn-primary">Retour au menu</button>
+        </div>
+    </div>
+
+    <!-- Écran de classement -->
+    <div id="leaderboard-screen" class="screen">
+        <div class="leaderboard-container">
+            <h2>Classement Global</h2>
+            <div id="leaderboard-list" class="leaderboard-list">
+                <!-- Les entrées du classement seront ajoutées ici -->
+            </div>
+            <button id="close-leaderboard" class="btn-secondary">Retour</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <!-- Game Scripts -->
     <script src="java.js"></script>
 </body>
 </html>
