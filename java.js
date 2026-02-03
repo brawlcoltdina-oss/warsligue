@@ -3,7 +3,6 @@
 // ==========================================
 
 // CONFIGURATION FIREBASE
-// Remplacez ces valeurs par votre configuration Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAigU1zwt8XzDmIZtddvxYstor-9QxDizw",
   authDomain: "warsligue.firebaseapp.com",
@@ -31,13 +30,15 @@ const GameState = {
     currentMatch: null,
     gameLoop: null,
     matchmakingListener: null,
+    matchStateListener: null,
+    gameTimerInterval: null,
     
-    // Cache local pour réduire les requêtes
+    // Cache local
     cache: {
         leaderboard: null,
         leaderboardTimestamp: 0,
         playerStats: {},
-        CACHE_DURATION: 300000 // 5 minutes
+        CACHE_DURATION: 300000
     }
 };
 
@@ -63,7 +64,6 @@ function showError(message) {
 // AUTHENTIFICATION
 // ==========================================
 
-// Basculer entre connexion et inscription
 document.getElementById('show-register').addEventListener('click', () => {
     document.getElementById('login-form').classList.remove('active');
     document.getElementById('register-form').classList.add('active');
@@ -74,7 +74,6 @@ document.getElementById('show-login').addEventListener('click', () => {
     document.getElementById('login-form').classList.add('active');
 });
 
-// Inscription
 document.getElementById('register-btn').addEventListener('click', async () => {
     const username = document.getElementById('register-username').value.trim();
     const email = document.getElementById('register-email').value.trim();
@@ -91,15 +90,13 @@ document.getElementById('register-btn').addEventListener('click', async () => {
     }
 
     try {
-        // Créer le compte
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
 
-        // Créer le profil utilisateur dans Firestore
         await db.collection('players').doc(user.uid).set({
             username: username,
             email: email,
-            trophies: 0,
+            trophies: 100, // Commencer à 100 trophées
             wins: 0,
             losses: 0,
             totalMatches: 0,
@@ -114,7 +111,6 @@ document.getElementById('register-btn').addEventListener('click', async () => {
     }
 });
 
-// Connexion
 document.getElementById('login-btn').addEventListener('click', async () => {
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
@@ -127,7 +123,6 @@ document.getElementById('login-btn').addEventListener('click', async () => {
     }
 });
 
-// Déconnexion
 document.getElementById('logout-btn').addEventListener('click', async () => {
     try {
         await auth.signOut();
@@ -136,7 +131,6 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
     }
 });
 
-// Observateur d'état d'authentification
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         GameState.currentUser = user;
@@ -155,12 +149,10 @@ auth.onAuthStateChanged(async (user) => {
 
 async function loadPlayerData() {
     try {
-        // Mise à jour de la dernière connexion
         await db.collection('players').doc(GameState.currentUser.uid).update({
             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // Écouter les changements du profil joueur en temps réel
         db.collection('players').doc(GameState.currentUser.uid)
             .onSnapshot((doc) => {
                 if (doc.exists) {
@@ -177,9 +169,8 @@ function updatePlayerUI() {
     if (!GameState.playerData) return;
 
     document.getElementById('player-name').textContent = GameState.playerData.username;
-    document.getElementById('player-trophies').textContent = GameState.playerData.trophies;
+    document.getElementById('player-trophies').textContent = GameState.playerData.trophies || 0;
     
-    // Avatar avec initiale
     const avatar = document.getElementById('player-avatar');
     avatar.textContent = GameState.playerData.username.charAt(0).toUpperCase();
 }
@@ -193,41 +184,32 @@ document.getElementById('cancel-matchmaking').addEventListener('click', cancelMa
 
 async function startMatchmaking() {
     showScreen('matchmaking-screen');
-    document.getElementById('mm-trophies').textContent = GameState.playerData.trophies;
+    document.getElementById('mm-trophies').textContent = GameState.playerData.trophies || 0;
 
     try {
-        // Ajouter le joueur à la file d'attente
         const queueRef = rtdb.ref('matchmaking_queue');
         const playerQueueRef = queueRef.push();
 
         await playerQueueRef.set({
             uid: GameState.currentUser.uid,
             username: GameState.playerData.username,
-            trophies: GameState.playerData.trophies,
+            trophies: GameState.playerData.trophies || 0,
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
 
-        // Écouter les matchs créés
         const matchRef = rtdb.ref(`active_matches`);
         GameState.matchmakingListener = matchRef.on('child_added', async (snapshot) => {
             const match = snapshot.val();
             
-            // Vérifier si ce match concerne ce joueur
             if (match.player1 === GameState.currentUser.uid || 
                 match.player2 === GameState.currentUser.uid) {
                 
-                // Supprimer de la queue
                 await playerQueueRef.remove();
-                
-                // Arrêter l'écoute
                 matchRef.off('child_added', GameState.matchmakingListener);
-                
-                // Démarrer le match
                 startMatch(snapshot.key, match);
             }
         });
 
-        // Chercher un adversaire
         findOpponent(playerQueueRef);
 
     } catch (error) {
@@ -241,18 +223,19 @@ async function findOpponent(playerQueueRef) {
     const queueSnapshot = await queueRef.once('value');
     const queue = queueSnapshot.val();
 
-    if (!queue) return;
+    if (!queue) {
+        setTimeout(() => findOpponent(playerQueueRef), 2000);
+        return;
+    }
 
     const players = Object.entries(queue).filter(([key, player]) => 
         player.uid !== GameState.currentUser.uid &&
-        Math.abs(player.trophies - GameState.playerData.trophies) <= 100
+        Math.abs(player.trophies - GameState.playerData.trophies) <= 200
     );
 
     if (players.length > 0) {
-        // Adversaire trouvé !
         const [opponentKey, opponent] = players[0];
         
-        // Créer le match
         const matchRef = rtdb.ref('active_matches').push();
         await matchRef.set({
             player1: GameState.currentUser.uid,
@@ -262,17 +245,15 @@ async function findOpponent(playerQueueRef) {
             startTime: firebase.database.ServerValue.TIMESTAMP,
             status: 'active',
             gameState: {
-                player1: { x: 100, y: 300, hp: 100, score: 0 },
-                player2: { x: 700, y: 300, hp: 100, score: 0 },
+                player1: { x: 100, y: 300, hp: 100, maxHP: 100 },
+                player2: { x: 700, y: 300, hp: 100, maxHP: 100 },
                 timeLeft: 180
             }
         });
 
-        // Supprimer les deux joueurs de la queue
         await playerQueueRef.remove();
         await rtdb.ref(`matchmaking_queue/${opponentKey}`).remove();
     } else {
-        // Réessayer dans 2 secondes
         setTimeout(() => findOpponent(playerQueueRef), 2000);
     }
 }
@@ -282,7 +263,6 @@ async function cancelMatchmaking() {
         rtdb.ref('active_matches').off('child_added', GameState.matchmakingListener);
     }
     
-    // Supprimer de la queue
     const queueRef = rtdb.ref('matchmaking_queue');
     const snapshot = await queueRef.orderByChild('uid').equalTo(GameState.currentUser.uid).once('value');
     snapshot.forEach(child => child.ref.remove());
@@ -298,14 +278,11 @@ function startMatch(matchId, matchData) {
     GameState.currentMatch = { id: matchId, ...matchData };
     showScreen('game-screen');
     
-    // Déterminer si on est player1 ou player2
     const isPlayer1 = matchData.player1 === GameState.currentUser.uid;
     
-    // Afficher les noms
     document.getElementById('player-game-name').textContent = isPlayer1 ? matchData.player1Username : matchData.player2Username;
     document.getElementById('opponent-game-name').textContent = isPlayer1 ? matchData.player2Username : matchData.player1Username;
     
-    // Initialiser le canvas
     initGame(matchId, isPlayer1);
 }
 
@@ -313,105 +290,171 @@ function startMatch(matchId, matchData) {
 // MOTEUR DE JEU (CANVAS)
 // ==========================================
 
-let canvas, ctx, player, opponent, gameTime;
+let canvas, ctx, player, opponent, gameTime, isPlayer1;
+let obstacles = [];
+let keys = {};
+let lastAttackTime = 0;
+let lastSpecialTime = 0;
+const ATTACK_COOLDOWN = 1000; // 1 seconde
+const SPECIAL_COOLDOWN = 5000; // 5 secondes
 
-function initGame(matchId, isPlayer1) {
+// Obstacles de la carte
+const MAP_OBSTACLES = [
+    { x: 200, y: 150, width: 60, height: 60, color: '#8B4513' },
+    { x: 600, y: 150, width: 80, height: 80, color: '#8B4513' },
+    { x: 400, y: 300, width: 70, height: 70, color: '#8B4513' },
+    { x: 150, y: 450, width: 90, height: 50, color: '#8B4513' },
+    { x: 650, y: 450, width: 90, height: 50, color: '#8B4513' }
+];
+
+function initGame(matchId, isP1) {
+    isPlayer1 = isP1;
     canvas = document.getElementById('game-canvas');
     ctx = canvas.getContext('2d');
     
-    // Adapter le canvas à la fenêtre
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight - 200; // Espace pour HUD et contrôles
+    canvas.height = window.innerHeight - 200;
     
-    // Position initiale
+    obstacles = MAP_OBSTACLES.map(obs => ({...obs}));
+    
     player = {
         x: isPlayer1 ? 100 : canvas.width - 100,
         y: canvas.height / 2,
         vx: 0,
         vy: 0,
         hp: 100,
+        maxHP: 100,
         radius: 25,
-        color: '#FF3366'
+        color: '#FF3366',
+        speed: 5
     };
     
     opponent = {
         x: isPlayer1 ? canvas.width - 100 : 100,
         y: canvas.height / 2,
         hp: 100,
+        maxHP: 100,
         radius: 25,
         color: '#6C5CE7'
     };
     
-    gameTime = 180; // 3 minutes
+    gameTime = 180;
     
-    // Écouter les mises à jour du match
+    // Écouter les changements d'état du match
     const matchRef = rtdb.ref(`active_matches/${matchId}/gameState`);
-    matchRef.on('value', (snapshot) => {
+    GameState.matchStateListener = matchRef.on('value', (snapshot) => {
         const state = snapshot.val();
         if (state) {
             updateGameState(state, isPlayer1);
         }
     });
     
-    // Contrôles
-    setupControls(matchId, isPlayer1);
+    // Écouter le statut du match
+    rtdb.ref(`active_matches/${matchId}/status`).on('value', (snapshot) => {
+        if (snapshot.val() === 'finished') {
+            // Le match est terminé
+            cleanupGame();
+        }
+    });
     
-    // Démarrer la boucle de jeu
+    setupKeyboardControls(matchId);
+    
     GameState.gameLoop = setInterval(() => {
         updateGame();
         renderGame();
-    }, 1000 / 60); // 60 FPS
+    }, 1000 / 60);
     
     // Timer du match
-    const timerInterval = setInterval(() => {
+    GameState.gameTimerInterval = setInterval(() => {
         gameTime--;
         document.getElementById('game-timer').textContent = formatTime(gameTime);
         
         if (gameTime <= 0) {
-            clearInterval(timerInterval);
             endMatch(matchId);
         }
     }, 1000);
 }
 
 function updateGameState(state, isPlayer1) {
+    if (!state) return;
+    
     const playerState = isPlayer1 ? state.player1 : state.player2;
     const opponentState = isPlayer1 ? state.player2 : state.player1;
     
-    // Mise à jour de l'adversaire (interpolation douce)
-    opponent.x += (opponentState.x - opponent.x) * 0.2;
-    opponent.y += (opponentState.y - opponent.y) * 0.2;
-    opponent.hp = opponentState.hp;
+    // Mise à jour fluide de l'adversaire
+    if (opponentState) {
+        opponent.x += (opponentState.x - opponent.x) * 0.3;
+        opponent.y += (opponentState.y - opponent.y) * 0.3;
+        opponent.hp = opponentState.hp || 100;
+    }
     
-    // Mise à jour HP
-    updateHP(playerState.hp, opponentState.hp);
+    // Mise à jour de notre HP (depuis le serveur)
+    if (playerState) {
+        player.hp = playerState.hp || 100;
+    }
+    
+    updateHP(player.hp, opponent.hp);
+    
+    // Vérifier si quelqu'un est mort
+    if (player.hp <= 0 || opponent.hp <= 0) {
+        endMatch(GameState.currentMatch.id);
+    }
 }
 
 function updateHP(playerHP, opponentHP) {
-    document.getElementById('player-hp').style.width = playerHP + '%';
-    document.getElementById('opponent-hp').style.width = opponentHP + '%';
+    const playerPercent = Math.max(0, Math.min(100, (playerHP / 100) * 100));
+    const opponentPercent = Math.max(0, Math.min(100, (opponentHP / 100) * 100));
+    
+    document.getElementById('player-hp').style.width = playerPercent + '%';
+    document.getElementById('opponent-hp').style.width = opponentPercent + '%';
 }
 
 function updateGame() {
-    // Physique simple
+    // Appliquer la vitesse
     player.x += player.vx;
     player.y += player.vy;
     
     // Friction
-    player.vx *= 0.9;
-    player.vy *= 0.9;
+    player.vx *= 0.85;
+    player.vy *= 0.85;
+    
+    // Collision avec les obstacles
+    obstacles.forEach(obs => {
+        if (checkCollisionWithObstacle(player, obs)) {
+            // Repousser le joueur
+            const dx = player.x - (obs.x + obs.width / 2);
+            const dy = player.y - (obs.y + obs.height / 2);
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 0) {
+                player.x += (dx / dist) * 5;
+                player.y += (dy / dist) * 5;
+            }
+            player.vx = 0;
+            player.vy = 0;
+        }
+    });
     
     // Limites du canvas
     player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
     player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
 }
 
+function checkCollisionWithObstacle(circle, rect) {
+    const closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.width));
+    const closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.height));
+    
+    const dx = circle.x - closestX;
+    const dy = circle.y - closestY;
+    
+    return (dx * dx + dy * dy) < (circle.radius * circle.radius);
+}
+
 function renderGame() {
-    // Effacer le canvas
+    // Fond
     ctx.fillStyle = '#0F0F1E';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Dessiner la grille
+    // Grille
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     for (let x = 0; x < canvas.width; x += 50) {
@@ -427,7 +470,21 @@ function renderGame() {
         ctx.stroke();
     }
     
-    // Dessiner l'adversaire
+    // Dessiner les obstacles
+    obstacles.forEach(obs => {
+        ctx.fillStyle = obs.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = obs.color;
+        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+        ctx.shadowBlur = 0;
+        
+        // Bordure
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+    });
+    
+    // Adversaire
     ctx.fillStyle = opponent.color;
     ctx.shadowBlur = 20;
     ctx.shadowColor = opponent.color;
@@ -436,7 +493,7 @@ function renderGame() {
     ctx.fill();
     ctx.shadowBlur = 0;
     
-    // Dessiner le joueur
+    // Joueur
     ctx.fillStyle = player.color;
     ctx.shadowBlur = 20;
     ctx.shadowColor = player.color;
@@ -447,77 +504,49 @@ function renderGame() {
 }
 
 // ==========================================
-// CONTRÔLES
+// CONTRÔLES CLAVIER
 // ==========================================
 
-function setupControls(matchId, isPlayer1) {
-    const joystick = document.getElementById('joystick');
-    const knob = joystick.querySelector('.joystick-knob');
-    
-    let isDragging = false;
-    let joystickCenter = { x: 0, y: 0 };
-    
-    function startDrag(e) {
-        isDragging = true;
-        const rect = joystick.getBoundingClientRect();
-        joystickCenter = {
-            x: rect.left + rect.width / 2,
-            y: rect.top + rect.height / 2
-        };
-    }
-    
-    function drag(e) {
-        if (!isDragging) return;
+function setupKeyboardControls(matchId) {
+    document.addEventListener('keydown', (e) => {
+        keys[e.key.toLowerCase()] = true;
         
-        const touch = e.touches ? e.touches[0] : e;
-        const dx = touch.clientX - joystickCenter.x;
-        const dy = touch.clientY - joystickCenter.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const maxDistance = 35;
+        // Attaque normale avec A
+        if (e.key.toLowerCase() === 'a') {
+            performAttack(matchId, isPlayer1, 'normal');
+        }
         
-        const angle = Math.atan2(dy, dx);
-        const clampedDistance = Math.min(distance, maxDistance);
-        
-        knob.style.transform = `translate(-50%, -50%) translate(${Math.cos(angle) * clampedDistance}px, ${Math.sin(angle) * clampedDistance}px)`;
-        
-        // Déplacer le joueur
-        const speed = 5;
-        player.vx = Math.cos(angle) * (clampedDistance / maxDistance) * speed;
-        player.vy = Math.sin(angle) * (clampedDistance / maxDistance) * speed;
-        
-        // Envoyer la position au serveur (throttled)
-        updatePlayerPosition(matchId, isPlayer1);
-    }
-    
-    function endDrag() {
-        isDragging = false;
-        knob.style.transform = 'translate(-50%, -50%)';
-        player.vx = 0;
-        player.vy = 0;
-    }
-    
-    joystick.addEventListener('mousedown', startDrag);
-    joystick.addEventListener('touchstart', startDrag);
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('touchmove', drag);
-    document.addEventListener('mouseup', endDrag);
-    document.addEventListener('touchend', endDrag);
-    
-    // Boutons d'action
-    document.getElementById('attack-btn').addEventListener('click', () => {
-        performAttack(matchId, isPlayer1, 'normal');
+        // Attaque spéciale avec E
+        if (e.key.toLowerCase() === 'e') {
+            performAttack(matchId, isPlayer1, 'special');
+        }
     });
     
-    document.getElementById('special-btn').addEventListener('click', () => {
-        performAttack(matchId, isPlayer1, 'special');
+    document.addEventListener('keyup', (e) => {
+        keys[e.key.toLowerCase()] = false;
     });
+    
+    // Boucle de mouvement
+    setInterval(() => {
+        const speed = player.speed;
+        
+        // Z = Haut, S = Bas, Q = Gauche, D = Droite
+        if (keys['z']) player.vy = -speed;
+        if (keys['s']) player.vy = speed;
+        if (keys['q']) player.vx = -speed;
+        if (keys['d']) player.vx = speed;
+        
+        // Envoyer la position
+        if (keys['z'] || keys['s'] || keys['q'] || keys['d']) {
+            updatePlayerPosition(matchId, isPlayer1);
+        }
+    }, 50);
 }
 
-// Throttle pour limiter les mises à jour
 let lastPositionUpdate = 0;
 function updatePlayerPosition(matchId, isPlayer1) {
     const now = Date.now();
-    if (now - lastPositionUpdate < 50) return; // Max 20 updates/sec
+    if (now - lastPositionUpdate < 50) return;
     lastPositionUpdate = now;
     
     const playerKey = isPlayer1 ? 'player1' : 'player2';
@@ -528,6 +557,16 @@ function updatePlayerPosition(matchId, isPlayer1) {
 }
 
 function performAttack(matchId, isPlayer1, type) {
+    const now = Date.now();
+    
+    if (type === 'normal') {
+        if (now - lastAttackTime < ATTACK_COOLDOWN) return;
+        lastAttackTime = now;
+    } else {
+        if (now - lastSpecialTime < SPECIAL_COOLDOWN) return;
+        lastSpecialTime = now;
+    }
+    
     const distance = Math.sqrt(
         Math.pow(player.x - opponent.x, 2) + 
         Math.pow(player.y - opponent.y, 2)
@@ -536,56 +575,97 @@ function performAttack(matchId, isPlayer1, type) {
     const attackRange = type === 'special' ? 150 : 100;
     
     if (distance <= attackRange) {
-        const damage = type === 'special' ? 15 : 10;
+        const damage = type === 'special' ? 20 : 10;
         const opponentKey = isPlayer1 ? 'player2' : 'player1';
         
+        // Effet visuel
+        flashScreen(type === 'special' ? '#FDCB6E' : '#FF3366');
+        
+        // Infliger des dégâts
         rtdb.ref(`active_matches/${matchId}/gameState/${opponentKey}/hp`)
             .transaction((currentHP) => {
-                return Math.max(0, (currentHP || 100) - damage);
+                const newHP = Math.max(0, (currentHP || 100) - damage);
+                return newHP;
             });
     }
+}
+
+function flashScreen(color) {
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.3;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = 1;
 }
 
 // ==========================================
 // FIN DE MATCH
 // ==========================================
 
+let matchEnded = false;
+
 async function endMatch(matchId) {
-    // Arrêter la boucle de jeu
-    if (GameState.gameLoop) {
-        clearInterval(GameState.gameLoop);
+    if (matchEnded) return;
+    matchEnded = true;
+    
+    cleanupGame();
+    
+    // Marquer le match comme terminé
+    await rtdb.ref(`active_matches/${matchId}/status`).set('finished');
+    
+    const isPlayer1 = GameState.currentMatch.player1 === GameState.currentUser.uid;
+    const playerHP = player.hp;
+    const opponentHP = opponent.hp;
+    
+    const victory = playerHP > opponentHP;
+    
+    // Calcul des trophées
+    let trophyChange;
+    if (victory) {
+        trophyChange = 10;
+    } else {
+        trophyChange = -5;
     }
     
-    // Déterminer le gagnant
-    const isPlayer1 = GameState.currentMatch.player1 === GameState.currentUser.uid;
-    const playerHP = isPlayer1 ? 
-        document.getElementById('player-hp').style.width : 
-        document.getElementById('opponent-hp').style.width;
-    const opponentHP = isPlayer1 ? 
-        document.getElementById('opponent-hp').style.width : 
-        document.getElementById('player-hp').style.width;
-    
-    const playerHPValue = parseInt(playerHP);
-    const opponentHPValue = parseInt(opponentHP);
-    
-    const victory = playerHPValue > opponentHPValue;
-    const trophyChange = victory ? 8 : -5;
-    
-    // Mettre à jour les stats
+    // Mise à jour des stats
     await updatePlayerStats(victory, trophyChange);
     
-    // Supprimer le match
-    await rtdb.ref(`active_matches/${matchId}`).remove();
+    // Supprimer le match après 2 secondes
+    setTimeout(async () => {
+        await rtdb.ref(`active_matches/${matchId}`).remove();
+    }, 2000);
     
     // Afficher le résultat
     showResult(victory, trophyChange);
 }
 
+function cleanupGame() {
+    if (GameState.gameLoop) {
+        clearInterval(GameState.gameLoop);
+        GameState.gameLoop = null;
+    }
+    
+    if (GameState.gameTimerInterval) {
+        clearInterval(GameState.gameTimerInterval);
+        GameState.gameTimerInterval = null;
+    }
+    
+    if (GameState.matchStateListener && GameState.currentMatch) {
+        rtdb.ref(`active_matches/${GameState.currentMatch.id}/gameState`).off('value', GameState.matchStateListener);
+        GameState.matchStateListener = null;
+    }
+    
+    keys = {};
+}
+
 async function updatePlayerStats(victory, trophyChange) {
     const playerRef = db.collection('players').doc(GameState.currentUser.uid);
     
+    // S'assurer que les trophées ne deviennent jamais négatifs
+    const currentTrophies = GameState.playerData.trophies || 0;
+    const newTrophies = Math.max(0, currentTrophies + trophyChange);
+    
     await playerRef.update({
-        trophies: firebase.firestore.FieldValue.increment(trophyChange),
+        trophies: newTrophies,
         totalMatches: firebase.firestore.FieldValue.increment(1),
         wins: victory ? firebase.firestore.FieldValue.increment(1) : firebase.firestore.FieldValue.increment(0),
         losses: !victory ? firebase.firestore.FieldValue.increment(1) : firebase.firestore.FieldValue.increment(0)
@@ -600,8 +680,12 @@ function showResult(victory, trophyChange) {
     title.className = victory ? 'result-title victory' : 'result-title defeat';
     
     const trophyChangeText = trophyChange > 0 ? `+${trophyChange}` : trophyChange;
+    const newTotal = Math.max(0, (GameState.playerData.trophies || 0) + trophyChange);
+    
     document.getElementById('result-trophies').textContent = `${trophyChangeText} 🏆`;
-    document.getElementById('result-total').textContent = `${GameState.playerData.trophies + trophyChange} 🏆`;
+    document.getElementById('result-total').textContent = `${newTotal} 🏆`;
+    
+    matchEnded = false;
 }
 
 document.getElementById('return-menu-btn').addEventListener('click', () => {
@@ -620,7 +704,6 @@ document.getElementById('close-leaderboard').addEventListener('click', () => {
 async function showLeaderboard() {
     showScreen('leaderboard-screen');
     
-    // Vérifier le cache
     const now = Date.now();
     if (GameState.cache.leaderboard && 
         (now - GameState.cache.leaderboardTimestamp) < GameState.cache.CACHE_DURATION) {
@@ -628,7 +711,6 @@ async function showLeaderboard() {
         return;
     }
     
-    // Charger depuis Firestore
     try {
         const snapshot = await db.collection('players')
             .orderBy('trophies', 'desc')
@@ -640,7 +722,6 @@ async function showLeaderboard() {
             leaderboard.push({ id: doc.id, ...doc.data() });
         });
         
-        // Mettre en cache
         GameState.cache.leaderboard = leaderboard;
         GameState.cache.leaderboardTimestamp = now;
         
@@ -666,7 +747,7 @@ function renderLeaderboard(players) {
         item.innerHTML = `
             <span class="leaderboard-rank ${index < 3 ? 'top3' : ''}">${index + 1}</span>
             <span class="leaderboard-player">${player.username}${isCurrentPlayer ? ' (Vous)' : ''}</span>
-            <span class="leaderboard-trophies">🏆 ${player.trophies}</span>
+            <span class="leaderboard-trophies">🏆 ${player.trophies || 0}</span>
         `;
         
         list.appendChild(item);
@@ -698,7 +779,6 @@ function formatTime(seconds) {
 window.addEventListener('load', () => {
     showScreen('loading-screen');
     
-    // Simuler le chargement
     setTimeout(() => {
         if (auth.currentUser) {
             showScreen('main-menu');
@@ -708,8 +788,8 @@ window.addEventListener('load', () => {
     }, 1500);
 });
 
-// Nettoyer les listeners à la fermeture
 window.addEventListener('beforeunload', () => {
+    cleanupGame();
     if (GameState.currentMatch) {
         rtdb.ref(`active_matches/${GameState.currentMatch.id}`).remove();
     }
