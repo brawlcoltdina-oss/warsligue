@@ -761,3 +761,403 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
         text-align: center;
     }
 }
+
+/* ========================================
+   CHESTS SCREEN
+   ======================================== */
+#chests-screen {
+    flex-direction: column;
+    background: linear-gradient(150deg, var(--darker-bg), var(--dark-bg));
+    padding: 1rem;
+}
+
+.chests-container {
+    width: 100%;
+    max-width: 900px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    margin: 0 auto;
+}
+
+.chests-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding: 0 0.5rem;
+}
+
+.chests-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem 0.5rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.chest-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    padding: 1.8rem 1.4rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.chest-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, var(--chest-glow), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.chest-card:hover::before {
+    opacity: 0.15;
+}
+
+.chest-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: var(--chest-color);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 25px var(--chest-glow);
+}
+
+.chest-card.locked {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.chest-card.locked:hover {
+    transform: none;
+}
+
+.chest-card.free-ready {
+    animation: pulseChest 2s ease infinite;
+}
+
+.chest-icon-display {
+    font-size: 4.5rem;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 0 15px var(--chest-glow));
+    animation: float 3s ease-in-out infinite;
+}
+
+.chest-name {
+    font-weight: 800;
+    font-size: 1.2rem;
+    margin-bottom: 0.6rem;
+    color: var(--chest-color);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.chest-rewards-preview {
+    font-size: 0.8rem;
+    color: var(--gray-text);
+    margin-bottom: 1rem;
+    line-height: 1.4;
+}
+
+.chest-cost {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: rgba(253, 203, 110, 0.15);
+    padding: 0.7rem 1.1rem;
+    border-radius: 12px;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    border: 1px solid rgba(253, 203, 110, 0.3);
+}
+
+.chest-timer {
+    font-size: 0.85rem;
+    color: var(--primary);
+    font-weight: 700;
+    background: rgba(255, 51, 102, 0.1);
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.chest-open-btn {
+    width: 100%;
+    padding: 0.9rem;
+    background: linear-gradient(135deg, var(--chest-color), var(--chest-dark));
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.chest-open-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px var(--chest-glow);
+}
+
+.chest-open-btn:disabled {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--gray-text);
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.6;
+}
+
+.chests-close-btn {
+    margin-top: 1.5rem;
+    width: 100%;
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 1rem 2rem;
+}
+
+/* ========================================
+   REWARD MODAL
+   ======================================== */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+}
+
+.modal-content {
+    position: relative;
+    z-index: 1001;
+    background: var(--card-bg);
+    backdrop-filter: blur(20px);
+    border: 2px solid rgba(255, 51, 102, 0.3);
+    border-radius: 24px;
+    padding: 3rem 2.5rem;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.chest-opening-anim {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+}
+
+.chest-icon {
+    font-size: 8rem;
+    animation: chestShake 0.8s ease infinite;
+    filter: drop-shadow(0 0 30px rgba(255, 51, 102, 0.6));
+}
+
+.reward-result {
+    animation: fadeInUp 0.6s ease;
+}
+
+.reward-title {
+    font-family: 'Bungee', cursive;
+    font-size: 1.8rem;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, #ffd700, #ff9800);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.reward-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid var(--reward-rarity-color);
+    border-radius: 20px;
+    padding: 2rem 1.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    box-shadow: 0 0 30px var(--reward-rarity-glow);
+}
+
+.reward-rarity-badge {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--reward-rarity-color);
+    color: white;
+    padding: 0.4rem 1.2rem;
+    border-radius: 20px;
+    font-weight: 800;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    box-shadow: 0 4px 15px var(--reward-rarity-glow);
+}
+
+.reward-icon {
+    font-size: 5rem;
+    margin: 1rem 0;
+    filter: drop-shadow(0 0 20px var(--reward-rarity-glow));
+    animation: rewardFloat 2s ease-in-out infinite;
+}
+
+.reward-name {
+    font-weight: 800;
+    font-size: 1.4rem;
+    color: var(--light-text);
+    margin-bottom: 0.5rem;
+}
+
+.reward-status {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #2ECC71;
+}
+
+.reward-status.duplicate {
+    color: var(--accent);
+}
+
+.reward-trophies,
+.reward-gold {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    padding: 0.8rem;
+    background: rgba(253, 203, 110, 0.1);
+    border-radius: 12px;
+}
+
+#claim-reward-btn {
+    width: 100%;
+    padding: 1.1rem 2rem;
+    font-size: 1.1rem;
+}
+
+/* ========================================
+   RARITY COLORS (CSS Variables dynamiques)
+   ======================================== */
+.rarity-common {
+    --reward-rarity-color: #95a5a6;
+    --reward-rarity-glow: rgba(149,165,166,0.4);
+}
+
+.rarity-rare {
+    --reward-rarity-color: #3498db;
+    --reward-rarity-glow: rgba(52,152,219,0.5);
+}
+
+.rarity-epic {
+    --reward-rarity-color: #9b59b6;
+    --reward-rarity-glow: rgba(155,89,182,0.6);
+}
+
+.rarity-legendary {
+    --reward-rarity-color: #f39c12;
+    --reward-rarity-glow: rgba(243,156,18,0.7);
+}
+
+/* ========================================
+   CHEST TYPE COLORS
+   ======================================== */
+.chest-basic {
+    --chest-color: #95a5a6;
+    --chest-dark: #7f8c8d;
+    --chest-glow: rgba(149,165,166,0.3);
+}
+
+.chest-silver {
+    --chest-color: #3498db;
+    --chest-dark: #2980b9;
+    --chest-glow: rgba(52,152,219,0.4);
+}
+
+.chest-gold {
+    --chest-color: #f39c12;
+    --chest-dark: #e67e22;
+    --chest-glow: rgba(243,156,18,0.5);
+}
+
+.chest-mega {
+    --chest-color: #9b59b6;
+    --chest-dark: #8e44ad;
+    --chest-glow: rgba(155,89,182,0.6);
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+@keyframes pulseChest {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px var(--chest-glow);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 35px var(--chest-glow);
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes chestShake {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-5deg) scale(1.05); }
+    75% { transform: rotate(5deg) scale(1.05); }
+}
+
+@keyframes rewardFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-8px) scale(1.05); }
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 600px) {
+    .chests-grid {
+        grid-template-columns: 1fr;
+        gap: 1.2rem;
+    }
+    
+    .chest-icon-display {
+        font-size: 3.5rem;
+    }
+    
+    .modal-content {
+        padding: 2rem 1.5rem;
+    }
+    
+    .reward-icon {
+        font-size: 4rem;
+    }
+}

@@ -86,7 +86,20 @@
     <div class="menu-content">
         <h1 class="game-title">WARSLIGUE</h1>
         <p class="menu-subtitle">Choisissez votre personnage et combattez !</p>
-
+ 
+        <div class="player-stats">
+    <h3 id="player-name">Joueur</h3>
+    <div class="stats-row">
+        <div class="trophies">
+            <span class="trophy-icon">🏆</span>
+            <span id="player-trophies">0</span>
+        </div>
+        <div class="gold">
+            <span class="gold-icon">💰</span>
+            <span id="player-gold">0</span>
+        </div>
+    </div>
+</div>
         <!-- CHARACTER SELECTION -->
         <div class="character-selector" id="character-selector">
             <div class="char-card active" data-char="warrior" onclick="selectCharacter('warrior')">
@@ -115,20 +128,67 @@
             </div>
         </div>
 
-        <div class="menu-buttons">
-            <button id="play-btn" class="btn-large btn-primary">
-                <span class="btn-icon">⚔️</span><span>JOUER</span>
-            </button>
-            <button id="shop-btn" class="btn-large btn-secondary">
-                <span class="btn-icon">🛒</span><span>BOUTIQUE</span>
-            </button>
+            <div class="menu-buttons">
+        <button id="play-btn" class="btn-large btn-primary">
+            <span class="btn-icon">⚔️</span><span>JOUER</span>
+        </button>
+        <button id="chests-btn" class="btn-large btn-secondary">
+            <span class="btn-icon">📦</span><span>COFFRES</span>
+        </button>
+        <button id="shop-btn" class="btn-large btn-secondary">
+            <span class="btn-icon">🛒</span><span>BOUTIQUE</span>
+         </button>
             <button id="leaderboard-btn" class="btn-large btn-secondary">
                 <span class="btn-icon">🏅</span><span>CLASSEMENT</span>
-            </button>
+             </button>
         </div>
     </div>
 </div>
+<!-- ===================== CHESTS SCREEN (AVEC OR) ===================== -->
+<div id="chests-screen" class="screen">
+    <div class="chests-container">
+        <div class="chests-header">
+            <h2 class="screen-title">📦 Coffres</h2>
+            <div class="player-coins">
+                <span class="coin-icon">💰</span>
+                <span id="chests-gold">0</span>
+            </div>
+        </div>
 
+        <div class="chests-grid" id="chests-grid">
+            <!-- Généré dynamiquement -->
+        </div>
+
+        <button id="close-chests" class="btn-secondary chests-close-btn">Retour</button>
+    </div>
+</div>
+
+<!-- ===================== REWARD MODAL (AVEC OR) ===================== -->
+<div id="reward-modal" class="modal">
+    <div class="modal-overlay" id="reward-overlay"></div>
+    <div class="modal-content reward-reveal">
+        <div class="chest-opening-anim" id="chest-opening">
+            <div class="chest-icon" id="opening-chest-icon">📦</div>
+        </div>
+        
+        <div class="reward-result" id="reward-result" style="display:none;">
+            <h3 class="reward-title">🎉 Récompense !</h3>
+            
+            <div class="reward-item" id="reward-item">
+                <div class="reward-rarity-badge" id="reward-rarity">COMMUN</div>
+                <div class="reward-icon" id="reward-icon">⚔️</div>
+                <div class="reward-name" id="reward-name">Warrior</div>
+                <div class="reward-status" id="reward-status">NOUVEAU !</div>
+            </div>
+            
+            <div class="reward-gold" id="reward-gold-display">
+                +150 💰
+            </div>
+            
+            <button id="claim-reward-btn" class="btn-primary">Récupérer</button>
+        </div>
+    </div>
+</div>
 <!-- ===================== SHOP SCREEN ===================== -->
 <div id="shop-screen" class="screen">
     <div class="shop-container">
@@ -267,8 +327,10 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
-<!-- GAME SCRIPTS -->
+
+<!-- GAME SCRIPTS (ORDRE IMPORTANT!) -->
 <script src="character.js"></script>
+<script src="rewards-gold.js"></script>  <!-- ✅ Nouveau fichier -->
 <script src="java.js"></script>
 
 </body>

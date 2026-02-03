@@ -1,5 +1,5 @@
 // ==========================================
-// WARSLIGUE — CHARACTERS & SHOP DATA
+// WARSLIGUE — CHARACTERS & SHOP DATA (avec raretés)
 // Chargé avant java.js
 // ==========================================
 
@@ -19,7 +19,8 @@ const CHARACTERS = {
         glowColor: 'rgba(255,51,102,0.6)',
         radius: 24,
         locked: false,
-        price: 0
+        price: 0,
+        rarity: 'common'
     },
     assassin: {
         name: "Assassin",
@@ -36,7 +37,8 @@ const CHARACTERS = {
         glowColor: 'rgba(155,89,182,0.6)',
         radius: 20,
         locked: false,
-        price: 0
+        price: 0,
+        rarity: 'common'
     },
     mage: {
         name: "Mage",
@@ -53,7 +55,8 @@ const CHARACTERS = {
         glowColor: 'rgba(243,156,18,0.6)',
         radius: 22,
         locked: false,
-        price: 0
+        price: 0,
+        rarity: 'common'
     },
     // NOUVEAUX PERSONNAGES DÉBLOQUABLES
     tank: {
@@ -72,7 +75,8 @@ const CHARACTERS = {
         radius: 28,
         locked: true,
         price: 500,
-        description: "Résistant mais lent"
+        description: "Résistant mais lent",
+        rarity: 'rare'
     },
     ninja: {
         name: "Ninja",
@@ -90,7 +94,8 @@ const CHARACTERS = {
         radius: 18,
         locked: true,
         price: 750,
-        description: "Ultra rapide et mortel"
+        description: "Ultra rapide et mortel",
+        rarity: 'rare'
     },
     necromancer: {
         name: "Necromancer",
@@ -108,7 +113,8 @@ const CHARACTERS = {
         radius: 23,
         locked: true,
         price: 1000,
-        description: "Maître de la magie noire"
+        description: "Maître de la magie noire",
+        rarity: 'epic'
     },
     paladin: {
         name: "Paladin",
@@ -126,7 +132,8 @@ const CHARACTERS = {
         radius: 25,
         locked: true,
         price: 1200,
-        description: "Équilibré et puissant"
+        description: "Équilibré et puissant",
+        rarity: 'epic'
     }
 };
 
@@ -139,7 +146,8 @@ const SKINS = {
         color: '#E74C3C',
         glowColor: 'rgba(231,76,60,0.6)',
         locked: true,
-        price: 300
+        price: 300,
+        rarity: 'rare'
     },
     warrior_blue: {
         name: "Warrior Ice",
@@ -148,7 +156,8 @@ const SKINS = {
         color: '#3498DB',
         glowColor: 'rgba(52,152,219,0.6)',
         locked: true,
-        price: 300
+        price: 300,
+        rarity: 'rare'
     },
     assassin_shadow: {
         name: "Assassin Shadow",
@@ -157,7 +166,8 @@ const SKINS = {
         color: '#2C3E50',
         glowColor: 'rgba(44,62,80,0.6)',
         locked: true,
-        price: 400
+        price: 400,
+        rarity: 'epic'
     },
     assassin_gold: {
         name: "Assassin Gold",
@@ -166,7 +176,8 @@ const SKINS = {
         color: '#F39C12',
         glowColor: 'rgba(243,156,18,0.6)',
         locked: true,
-        price: 400
+        price: 400,
+        rarity: 'epic'
     },
     mage_emerald: {
         name: "Mage Emerald",
@@ -175,7 +186,8 @@ const SKINS = {
         color: '#2ECC71',
         glowColor: 'rgba(46,204,113,0.6)',
         locked: true,
-        price: 350
+        price: 350,
+        rarity: 'rare'
     },
     mage_purple: {
         name: "Mage Purple",
@@ -184,7 +196,8 @@ const SKINS = {
         color: '#9B59B6',
         glowColor: 'rgba(155,89,182,0.6)',
         locked: true,
-        price: 350
+        price: 350,
+        rarity: 'rare'
     }
 };
 
