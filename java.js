@@ -1,8 +1,7 @@
 // ==========================================
-// WARSLIGUE - CONFIGURATION & INITIALISATION
+// WARSLIGUE - VERSION CORRIGÉE QUI MARCHE
 // ==========================================
 
-// CONFIGURATION FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyAigU1zwt8XzDmIZtddvxYstor-9QxDizw",
   authDomain: "warsligue.firebaseapp.com",
@@ -14,15 +13,10 @@ const firebaseConfig = {
   measurementId: "G-84EWH821ED"
 };
 
-// Initialisation Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 const rtdb = firebase.database();
-
-// ==========================================
-// GESTION DE L'ÉTAT DU JEU
-// ==========================================
 
 const GameState = {
     currentUser: null,
@@ -32,8 +26,6 @@ const GameState = {
     matchmakingListener: null,
     matchStateListener: null,
     gameTimerInterval: null,
-    
-    // Cache local
     cache: {
         leaderboard: null,
         leaderboardTimestamp: 0,
@@ -96,7 +88,7 @@ document.getElementById('register-btn').addEventListener('click', async () => {
         await db.collection('players').doc(user.uid).set({
             username: username,
             email: email,
-            trophies: 100, // Commencer à 100 trophées
+            trophies: 100,
             wins: 0,
             losses: 0,
             totalMatches: 0,
@@ -104,9 +96,9 @@ document.getElementById('register-btn').addEventListener('click', async () => {
             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        console.log('Compte créé avec succès');
+        console.log('✅ Compte créé avec succès');
     } catch (error) {
-        console.error('Erreur d\'inscription:', error);
+        console.error('❌ Erreur inscription:', error);
         showError(error.message);
     }
 });
@@ -117,8 +109,9 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 
     try {
         await auth.signInWithEmailAndPassword(email, password);
+        console.log('✅ Connexion réussie');
     } catch (error) {
-        console.error('Erreur de connexion:', error);
+        console.error('❌ Erreur connexion:', error);
         showError('Email ou mot de passe incorrect');
     }
 });
@@ -127,7 +120,7 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
     try {
         await auth.signOut();
     } catch (error) {
-        console.error('Erreur de déconnexion:', error);
+        console.error('❌ Erreur déconnexion:', error);
     }
 });
 
@@ -161,7 +154,7 @@ async function loadPlayerData() {
                 }
             });
     } catch (error) {
-        console.error('Erreur de chargement des données:', error);
+        console.error('❌ Erreur chargement données:', error);
     }
 }
 
@@ -183,6 +176,7 @@ document.getElementById('play-btn').addEventListener('click', startMatchmaking);
 document.getElementById('cancel-matchmaking').addEventListener('click', cancelMatchmaking);
 
 async function startMatchmaking() {
+    console.log('🔍 Recherche de match...');
     showScreen('matchmaking-screen');
     document.getElementById('mm-trophies').textContent = GameState.playerData.trophies || 0;
 
@@ -204,6 +198,7 @@ async function startMatchmaking() {
             if (match.player1 === GameState.currentUser.uid || 
                 match.player2 === GameState.currentUser.uid) {
                 
+                console.log('✅ Match trouvé!', snapshot.key);
                 await playerQueueRef.remove();
                 matchRef.off('child_added', GameState.matchmakingListener);
                 startMatch(snapshot.key, match);
@@ -213,7 +208,7 @@ async function startMatchmaking() {
         findOpponent(playerQueueRef);
 
     } catch (error) {
-        console.error('Erreur matchmaking:', error);
+        console.error('❌ Erreur matchmaking:', error);
         showScreen('main-menu');
     }
 }
@@ -230,7 +225,7 @@ async function findOpponent(playerQueueRef) {
 
     const players = Object.entries(queue).filter(([key, player]) => 
         player.uid !== GameState.currentUser.uid &&
-        Math.abs(player.trophies - GameState.playerData.trophies) <= 200
+        Math.abs(player.trophies - (GameState.playerData.trophies || 0)) <= 200
     );
 
     if (players.length > 0) {
@@ -245,8 +240,8 @@ async function findOpponent(playerQueueRef) {
             startTime: firebase.database.ServerValue.TIMESTAMP,
             status: 'active',
             gameState: {
-                player1: { x: 100, y: 300, hp: 100, maxHP: 100 },
-                player2: { x: 700, y: 300, hp: 100, maxHP: 100 },
+                player1: { x: 100, y: 300, hp: 100 },
+                player2: { x: 700, y: 300, hp: 100 },
                 timeLeft: 180
             }
         });
@@ -259,6 +254,7 @@ async function findOpponent(playerQueueRef) {
 }
 
 async function cancelMatchmaking() {
+    console.log('❌ Matchmaking annulé');
     if (GameState.matchmakingListener) {
         rtdb.ref('active_matches').off('child_added', GameState.matchmakingListener);
     }
@@ -271,43 +267,42 @@ async function cancelMatchmaking() {
 }
 
 // ==========================================
-// JEU
+// JEU - VARIABLES GLOBALES
+// ==========================================
+
+let canvas, ctx, player, opponent, gameTime, isPlayer1;
+let keys = {};
+let lastAttackTime = 0;
+let lastSpecialTime = 0;
+let matchEnded = false;
+
+const ATTACK_COOLDOWN = 1000;
+const SPECIAL_COOLDOWN = 5000;
+
+// ==========================================
+// DÉMARRAGE DU MATCH
 // ==========================================
 
 function startMatch(matchId, matchData) {
+    console.log('🎮 Démarrage du match', matchId);
     GameState.currentMatch = { id: matchId, ...matchData };
     showScreen('game-screen');
     
-    const isPlayer1 = matchData.player1 === GameState.currentUser.uid;
+    isPlayer1 = matchData.player1 === GameState.currentUser.uid;
     
     document.getElementById('player-game-name').textContent = isPlayer1 ? matchData.player1Username : matchData.player2Username;
     document.getElementById('opponent-game-name').textContent = isPlayer1 ? matchData.player2Username : matchData.player1Username;
     
+    matchEnded = false;
     initGame(matchId, isPlayer1);
 }
 
 // ==========================================
-// MOTEUR DE JEU (CANVAS)
+// INITIALISATION DU JEU
 // ==========================================
 
-let canvas, ctx, player, opponent, gameTime, isPlayer1;
-let obstacles = [];
-let keys = {};
-let lastAttackTime = 0;
-let lastSpecialTime = 0;
-const ATTACK_COOLDOWN = 1000; // 1 seconde
-const SPECIAL_COOLDOWN = 5000; // 5 secondes
-
-// Obstacles de la carte
-const MAP_OBSTACLES = [
-    { x: 200, y: 150, width: 60, height: 60, color: '#8B4513' },
-    { x: 600, y: 150, width: 80, height: 80, color: '#8B4513' },
-    { x: 400, y: 300, width: 70, height: 70, color: '#8B4513' },
-    { x: 150, y: 450, width: 90, height: 50, color: '#8B4513' },
-    { x: 650, y: 450, width: 90, height: 50, color: '#8B4513' }
-];
-
 function initGame(matchId, isP1) {
+    console.log('🎯 Initialisation du jeu, isPlayer1:', isP1);
     isPlayer1 = isP1;
     canvas = document.getElementById('game-canvas');
     ctx = canvas.getContext('2d');
@@ -315,15 +310,13 @@ function initGame(matchId, isP1) {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight - 200;
     
-    obstacles = MAP_OBSTACLES.map(obs => ({...obs}));
-    
+    // Position initiale
     player = {
         x: isPlayer1 ? 100 : canvas.width - 100,
         y: canvas.height / 2,
         vx: 0,
         vy: 0,
         hp: 100,
-        maxHP: 100,
         radius: 25,
         color: '#FF3366',
         speed: 5
@@ -333,14 +326,13 @@ function initGame(matchId, isP1) {
         x: isPlayer1 ? canvas.width - 100 : 100,
         y: canvas.height / 2,
         hp: 100,
-        maxHP: 100,
         radius: 25,
         color: '#6C5CE7'
     };
     
     gameTime = 180;
     
-    // Écouter les changements d'état du match
+    // ÉCOUTER LES CHANGEMENTS DE L'ADVERSAIRE
     const matchRef = rtdb.ref(`active_matches/${matchId}/gameState`);
     GameState.matchStateListener = matchRef.on('value', (snapshot) => {
         const state = snapshot.val();
@@ -349,31 +341,37 @@ function initGame(matchId, isP1) {
         }
     });
     
-    // Écouter le statut du match
-    rtdb.ref(`active_matches/${matchId}/status`).on('value', (snapshot) => {
-        if (snapshot.val() === 'finished') {
-            // Le match est terminé
-            cleanupGame();
-        }
-    });
-    
+    // CONTRÔLES CLAVIER
     setupKeyboardControls(matchId);
     
+    // BOUCLE DE JEU
     GameState.gameLoop = setInterval(() => {
         updateGame();
         renderGame();
     }, 1000 / 60);
     
-    // Timer du match
+    // TIMER
+    updateTimerDisplay();
     GameState.gameTimerInterval = setInterval(() => {
         gameTime--;
-        document.getElementById('game-timer').textContent = formatTime(gameTime);
+        updateTimerDisplay();
         
         if (gameTime <= 0) {
+            console.log('⏰ Temps écoulé!');
             endMatch(matchId);
         }
     }, 1000);
 }
+
+function updateTimerDisplay() {
+    const mins = Math.floor(gameTime / 60);
+    const secs = gameTime % 60;
+    document.getElementById('game-timer').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// ==========================================
+// MISE À JOUR DE L'ÉTAT DU JEU
+// ==========================================
 
 function updateGameState(state, isPlayer1) {
     if (!state) return;
@@ -381,143 +379,53 @@ function updateGameState(state, isPlayer1) {
     const playerState = isPlayer1 ? state.player1 : state.player2;
     const opponentState = isPlayer1 ? state.player2 : state.player1;
     
-    // Mise à jour fluide de l'adversaire
+    // Mise à jour de l'adversaire
     if (opponentState) {
         opponent.x += (opponentState.x - opponent.x) * 0.3;
         opponent.y += (opponentState.y - opponent.y) * 0.3;
-        opponent.hp = opponentState.hp || 100;
+        opponent.hp = opponentState.hp || 0;
     }
     
-    // Mise à jour de notre HP (depuis le serveur)
+    // Mise à jour de notre HP
     if (playerState) {
-        player.hp = playerState.hp || 100;
+        player.hp = playerState.hp || 0;
     }
     
-    updateHP(player.hp, opponent.hp);
-    
-    // Vérifier si quelqu'un est mort
-    if (player.hp <= 0 || opponent.hp <= 0) {
-        endMatch(GameState.currentMatch.id);
-    }
-}
-
-function updateHP(playerHP, opponentHP) {
-    const playerPercent = Math.max(0, Math.min(100, (playerHP / 100) * 100));
-    const opponentPercent = Math.max(0, Math.min(100, (opponentHP / 100) * 100));
+    // Mise à jour de l'affichage des HP
+    const playerPercent = Math.max(0, Math.min(100, player.hp));
+    const opponentPercent = Math.max(0, Math.min(100, opponent.hp));
     
     document.getElementById('player-hp').style.width = playerPercent + '%';
     document.getElementById('opponent-hp').style.width = opponentPercent + '%';
-}
-
-function updateGame() {
-    // Appliquer la vitesse
-    player.x += player.vx;
-    player.y += player.vy;
     
-    // Friction
-    player.vx *= 0.85;
-    player.vy *= 0.85;
-    
-    // Collision avec les obstacles
-    obstacles.forEach(obs => {
-        if (checkCollisionWithObstacle(player, obs)) {
-            // Repousser le joueur
-            const dx = player.x - (obs.x + obs.width / 2);
-            const dy = player.y - (obs.y + obs.height / 2);
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist > 0) {
-                player.x += (dx / dist) * 5;
-                player.y += (dy / dist) * 5;
-            }
-            player.vx = 0;
-            player.vy = 0;
+    // VÉRIFIER SI QUELQU'UN EST MORT
+    if (player.hp <= 0 || opponent.hp <= 0) {
+        console.log('💀 Quelqu\'un est mort! Player HP:', player.hp, 'Opponent HP:', opponent.hp);
+        if (!matchEnded) {
+            endMatch(GameState.currentMatch.id);
         }
-    });
-    
-    // Limites du canvas
-    player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
-    player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
-}
-
-function checkCollisionWithObstacle(circle, rect) {
-    const closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.width));
-    const closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.height));
-    
-    const dx = circle.x - closestX;
-    const dy = circle.y - closestY;
-    
-    return (dx * dx + dy * dy) < (circle.radius * circle.radius);
-}
-
-function renderGame() {
-    // Fond
-    ctx.fillStyle = '#0F0F1E';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Grille
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < canvas.width; x += 50) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
     }
-    for (let y = 0; y < canvas.height; y += 50) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-    }
-    
-    // Dessiner les obstacles
-    obstacles.forEach(obs => {
-        ctx.fillStyle = obs.color;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = obs.color;
-        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-        ctx.shadowBlur = 0;
-        
-        // Bordure
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
-    });
-    
-    // Adversaire
-    ctx.fillStyle = opponent.color;
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = opponent.color;
-    ctx.beginPath();
-    ctx.arc(opponent.x, opponent.y, opponent.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    
-    // Joueur
-    ctx.fillStyle = player.color;
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = player.color;
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
 }
 
 // ==========================================
-// CONTRÔLES CLAVIER
+// CONTRÔLES CLAVIER - ZQSD + AE
 // ==========================================
 
 function setupKeyboardControls(matchId) {
+    console.log('⌨️ Contrôles clavier activés: ZQSD pour bouger, A pour attaquer, E pour spécial');
+    
+    // DÉTECTION DES TOUCHES
     document.addEventListener('keydown', (e) => {
-        keys[e.key.toLowerCase()] = true;
+        const key = e.key.toLowerCase();
+        keys[key] = true;
         
-        // Attaque normale avec A
-        if (e.key.toLowerCase() === 'a') {
+        // ATTAQUE NORMALE (A)
+        if (key === 'a') {
             performAttack(matchId, isPlayer1, 'normal');
         }
         
-        // Attaque spéciale avec E
-        if (e.key.toLowerCase() === 'e') {
+        // ATTAQUE SPÉCIALE (E)
+        if (key === 'e') {
             performAttack(matchId, isPlayer1, 'special');
         }
     });
@@ -525,22 +433,36 @@ function setupKeyboardControls(matchId) {
     document.addEventListener('keyup', (e) => {
         keys[e.key.toLowerCase()] = false;
     });
+}
+
+// ==========================================
+// MISE À JOUR DU JEU
+// ==========================================
+
+function updateGame() {
+    const speed = player.speed;
     
-    // Boucle de mouvement
-    setInterval(() => {
-        const speed = player.speed;
-        
-        // Z = Haut, S = Bas, Q = Gauche, D = Droite
-        if (keys['z']) player.vy = -speed;
-        if (keys['s']) player.vy = speed;
-        if (keys['q']) player.vx = -speed;
-        if (keys['d']) player.vx = speed;
-        
-        // Envoyer la position
-        if (keys['z'] || keys['s'] || keys['q'] || keys['d']) {
-            updatePlayerPosition(matchId, isPlayer1);
-        }
-    }, 50);
+    // DÉPLACEMENTS ZQSD
+    player.vx = 0;
+    player.vy = 0;
+    
+    if (keys['z']) player.vy = -speed;
+    if (keys['s']) player.vy = speed;
+    if (keys['q']) player.vx = -speed;
+    if (keys['d']) player.vx = speed;
+    
+    // APPLIQUER LE MOUVEMENT
+    player.x += player.vx;
+    player.y += player.vy;
+    
+    // LIMITES DU CANVAS
+    player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+    player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+    
+    // ENVOYER LA POSITION À FIREBASE
+    if (player.vx !== 0 || player.vy !== 0) {
+        updatePlayerPosition(GameState.currentMatch.id, isPlayer1);
+    }
 }
 
 let lastPositionUpdate = 0;
@@ -556,89 +478,152 @@ function updatePlayerPosition(matchId, isPlayer1) {
     });
 }
 
+// ==========================================
+// ATTAQUES
+// ==========================================
+
 function performAttack(matchId, isPlayer1, type) {
     const now = Date.now();
     
+    // COOLDOWN
     if (type === 'normal') {
-        if (now - lastAttackTime < ATTACK_COOLDOWN) return;
+        if (now - lastAttackTime < ATTACK_COOLDOWN) {
+            console.log('⏳ Attaque normale en cooldown');
+            return;
+        }
         lastAttackTime = now;
     } else {
-        if (now - lastSpecialTime < SPECIAL_COOLDOWN) return;
+        if (now - lastSpecialTime < SPECIAL_COOLDOWN) {
+            console.log('⏳ Attaque spéciale en cooldown');
+            return;
+        }
         lastSpecialTime = now;
     }
     
+    // CALCULER LA DISTANCE
     const distance = Math.sqrt(
         Math.pow(player.x - opponent.x, 2) + 
         Math.pow(player.y - opponent.y, 2)
     );
     
     const attackRange = type === 'special' ? 150 : 100;
+    const damage = type === 'special' ? 20 : 10;
+    
+    console.log(`⚔️ Attaque ${type}! Distance:`, distance, 'Portée:', attackRange);
     
     if (distance <= attackRange) {
-        const damage = type === 'special' ? 20 : 10;
-        const opponentKey = isPlayer1 ? 'player2' : 'player1';
+        console.log(`💥 TOUCHÉ! Dégâts: ${damage}`);
         
-        // Effet visuel
+        // EFFET VISUEL
         flashScreen(type === 'special' ? '#FDCB6E' : '#FF3366');
         
-        // Infliger des dégâts
+        // INFLIGER DES DÉGÂTS
+        const opponentKey = isPlayer1 ? 'player2' : 'player1';
+        
         rtdb.ref(`active_matches/${matchId}/gameState/${opponentKey}/hp`)
             .transaction((currentHP) => {
-                const newHP = Math.max(0, (currentHP || 100) - damage);
+                if (currentHP === null) currentHP = 100;
+                const newHP = Math.max(0, currentHP - damage);
+                console.log(`❤️ HP adversaire: ${currentHP} → ${newHP}`);
                 return newHP;
             });
+    } else {
+        console.log('❌ Trop loin pour toucher!');
     }
 }
 
 function flashScreen(color) {
+    ctx.save();
     ctx.fillStyle = color;
     ctx.globalAlpha = 0.3;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.globalAlpha = 1;
+    ctx.restore();
 }
 
 // ==========================================
-// FIN DE MATCH
+// RENDU DU JEU
 // ==========================================
 
-let matchEnded = false;
+function renderGame() {
+    // FOND
+    ctx.fillStyle = '#0F0F1E';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // GRILLE
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += 50) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += 50) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+    }
+    
+    // ADVERSAIRE
+    ctx.fillStyle = opponent.color;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = opponent.color;
+    ctx.beginPath();
+    ctx.arc(opponent.x, opponent.y, opponent.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    // JOUEUR
+    ctx.fillStyle = player.color;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = player.color;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+}
+
+// ==========================================
+// FIN DU MATCH
+// ==========================================
 
 async function endMatch(matchId) {
-    if (matchEnded) return;
+    if (matchEnded) {
+        console.log('⚠️ Match déjà terminé');
+        return;
+    }
     matchEnded = true;
+    
+    console.log('🏁 Fin du match!');
     
     cleanupGame();
     
-    // Marquer le match comme terminé
+    // MARQUER COMME TERMINÉ
     await rtdb.ref(`active_matches/${matchId}/status`).set('finished');
     
-    const isPlayer1 = GameState.currentMatch.player1 === GameState.currentUser.uid;
-    const playerHP = player.hp;
-    const opponentHP = opponent.hp;
+    // DÉTERMINER LE GAGNANT
+    const victory = player.hp > opponent.hp;
+    console.log(victory ? '🎉 VICTOIRE!' : '💔 DÉFAITE', `(${player.hp} HP vs ${opponent.hp} HP)`);
     
-    const victory = playerHP > opponentHP;
+    // CALCUL DES TROPHÉES
+    const trophyChange = victory ? 10 : -5;
     
-    // Calcul des trophées
-    let trophyChange;
-    if (victory) {
-        trophyChange = 10;
-    } else {
-        trophyChange = -5;
-    }
-    
-    // Mise à jour des stats
+    // MISE À JOUR DES STATS
     await updatePlayerStats(victory, trophyChange);
     
-    // Supprimer le match après 2 secondes
+    // SUPPRIMER LE MATCH
     setTimeout(async () => {
         await rtdb.ref(`active_matches/${matchId}`).remove();
     }, 2000);
     
-    // Afficher le résultat
+    // AFFICHER LE RÉSULTAT
     showResult(victory, trophyChange);
 }
 
 function cleanupGame() {
+    console.log('🧹 Nettoyage du jeu');
+    
     if (GameState.gameLoop) {
         clearInterval(GameState.gameLoop);
         GameState.gameLoop = null;
@@ -660,9 +645,10 @@ function cleanupGame() {
 async function updatePlayerStats(victory, trophyChange) {
     const playerRef = db.collection('players').doc(GameState.currentUser.uid);
     
-    // S'assurer que les trophées ne deviennent jamais négatifs
     const currentTrophies = GameState.playerData.trophies || 0;
     const newTrophies = Math.max(0, currentTrophies + trophyChange);
+    
+    console.log(`🏆 Trophées: ${currentTrophies} ${trophyChange > 0 ? '+' : ''}${trophyChange} = ${newTrophies}`);
     
     await playerRef.update({
         trophies: newTrophies,
@@ -684,8 +670,6 @@ function showResult(victory, trophyChange) {
     
     document.getElementById('result-trophies').textContent = `${trophyChangeText} 🏆`;
     document.getElementById('result-total').textContent = `${newTotal} 🏆`;
-    
-    matchEnded = false;
 }
 
 document.getElementById('return-menu-btn').addEventListener('click', () => {
@@ -727,7 +711,7 @@ async function showLeaderboard() {
         
         renderLeaderboard(leaderboard);
     } catch (error) {
-        console.error('Erreur chargement classement:', error);
+        console.error('❌ Erreur classement:', error);
     }
 }
 
@@ -763,20 +747,11 @@ document.getElementById('profile-btn').addEventListener('click', () => {
 });
 
 // ==========================================
-// UTILITAIRES
-// ==========================================
-
-function formatTime(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
-// ==========================================
 // INITIALISATION
 // ==========================================
 
 window.addEventListener('load', () => {
+    console.log('🎮 WARSLIGUE chargé!');
     showScreen('loading-screen');
     
     setTimeout(() => {
