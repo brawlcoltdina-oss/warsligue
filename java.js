@@ -527,11 +527,22 @@ async function renderChests() {
     }
 }
 
+// ==========================================
+// FONCTION OPENCCHEST CORRIGÉE - À REMPLACER DANS JAVA.JS
+// Remplace la fonction openChest (ligne ~576)
+// ==========================================
+
 async function openChest(chestType) {
-    if (!G.user || !G.playerData) return;
+    if (!G.user || !G.playerData) {
+        console.error('❌ Pas de user ou playerData');
+        return;
+    }
 
     const chest = CHEST_TYPES[chestType];
-    if (!chest) return;
+    if (!chest) {
+        console.error('❌ Type de coffre invalide:', chestType);
+        return;
+    }
 
     const isFree = chest.cost === 0;
 
@@ -541,59 +552,77 @@ async function openChest(chestType) {
         const playerData = doc.data();
         const currentGold = playerData.gold || 0;
 
+        console.log('🎯 Tentative ouverture coffre:', chestType, 'Gold actuel:', currentGold);
+
+        // Vérifier si assez d'or pour les coffres payants
         if (!isFree && currentGold < chest.cost) {
             showError('Pas assez d\'or !');
             return;
         }
 
+        // Vérifier le cooldown pour le coffre gratuit
         if (isFree) {
             const lastFreeChest = playerData.lastFreeChest ? playerData.lastFreeChest.toMillis() : 0;
             const timeSinceLastFree = Date.now() - lastFreeChest;
-            if (timeSinceLastFree < 14400000) {
+            if (timeSinceLastFree < 14400000) { // 4 heures
                 showError('Coffre gratuit pas encore disponible !');
                 return;
             }
         }
 
+        // 🎲 TIRER LA RÉCOMPENSE
         const reward = rollChestReward(chestType);
         if (!reward) {
             showError('Erreur lors du tirage');
             return;
         }
 
+        console.log('🎁 Récompense tirée:', reward);
+
+        // Vérifier si le joueur possède déjà l'item
         const alreadyOwned = playerOwnsItem(playerData, reward.item);
         const goldBonus = alreadyOwned ? Math.floor(reward.gold * 0.5) : 0;
 
+        // 📝 PRÉPARER LA MISE À JOUR FIRESTORE
         const updates = {
             gold: isFree 
                 ? currentGold + reward.gold + goldBonus
                 : currentGold - chest.cost + reward.gold + goldBonus
         };
 
+        // Mettre à jour le timestamp du coffre gratuit
         if (isFree) {
             updates.lastFreeChest = firebase.firestore.FieldValue.serverTimestamp();
         }
 
+        // Ajouter le personnage/skin si nouveau
         if (!alreadyOwned && reward.item) {
             if (reward.item.type === 'character') {
                 updates.ownedCharacters = firebase.firestore.FieldValue.arrayUnion(reward.item.key);
-            } else {
+                console.log('✅ Nouveau personnage:', reward.item.key);
+            } else if (reward.item.type === 'skin') {
                 updates.ownedSkins = firebase.firestore.FieldValue.arrayUnion(reward.item.key);
+                console.log('✅ Nouveau skin:', reward.item.key);
             }
         }
 
+        // 💾 ENREGISTRER DANS FIREBASE
         await playerRef.update(updates);
+        console.log('✅ Coffre ouvert avec succès!');
 
-        console.log('✅ Coffre ouvert:', chestType, reward);
-
+        // 🎬 AFFICHER LA MODAL AVEC ANIMATION
         currentReward = { ...reward, alreadyOwned, goldBonus };
         showRewardModal(currentReward, chest.emoji);
 
     } catch (e) {
         console.error('❌ Erreur ouverture coffre:', e);
-        showError('Erreur lors de l\'ouverture');
+        showError('Erreur lors de l\'ouverture: ' + e.message);
     }
 }
+
+// ==========================================
+// FONCTION SHOWREWARDMODAL AVEC ANIMATION PROGRESSIVE
+// ==========================================
 
 function showRewardModal(reward, chestEmoji) {
     const modal = document.getElementById('reward-modal');
@@ -602,11 +631,60 @@ function showRewardModal(reward, chestEmoji) {
     const chestIcon = document.getElementById('opening-chest-icon');
 
     modal.classList.add('active');
-
     chestIcon.textContent = chestEmoji;
     openingAnim.style.display = 'flex';
     resultDiv.style.display = 'none';
 
+    // 🎬 ÉTAPE 1: Animation du coffre qui tremble (2 secondes)
+    chestIcon.style.animation = 'chestShake 0.8s ease infinite';
+    
+    setTimeout(() => {
+        chestIcon.style.animation = 'chestShakeIntense 0.5s ease infinite';
+    }, 1000);
+
+    // 🎬 ÉTAPE 2: Flash et explosion du coffre (2.5 secondes)
+    setTimeout(() => {
+        openingAnim.style.background = 'radial-gradient(circle, rgba(255,255,255,0.4), transparent)';
+        openingAnim.style.transition = 'background 0.3s';
+        
+        setTimeout(() => {
+            openingAnim.style.background = 'transparent';
+        }, 300);
+    }, 2000);
+
+    // 🎬 ÉTAPE 3: Révélation de la rareté (3 secondes)
+    setTimeout(() => {
+        const rarityColor = RARITIES[reward.rarity].color;
+        const rarityGlow = RARITIES[reward.rarity].glowColor;
+        
+        openingAnim.innerHTML = `
+            <div class="rarity-reveal" style="
+                font-size: 3rem;
+                font-weight: 900;
+                color: ${rarityColor};
+                text-shadow: 0 0 30px ${rarityGlow};
+                animation: rarityPulse 0.8s ease;
+                font-family: 'Bungee', cursive;
+                letter-spacing: 0.1em;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 200px;
+            ">
+                ${RARITIES[reward.rarity].name.toUpperCase()}
+            </div>
+        `;
+    }, 2500);
+
+    // 🎬 ÉTAPE 4: Si RARE/EPIC/LEGENDARY, animation spéciale (3.5 secondes)
+    if (reward.rarity !== 'common') {
+        setTimeout(() => {
+            createRarityParticles(reward.rarity);
+            playRaritySound(reward.rarity);
+        }, 3000);
+    }
+
+    // 🎬 ÉTAPE 5: Révélation finale de l'item (4 secondes)
     setTimeout(() => {
         openingAnim.style.display = 'none';
         resultDiv.style.display = 'block';
@@ -641,17 +719,235 @@ function showRewardModal(reward, chestEmoji) {
             const totalGold = reward.gold + reward.goldBonus;
             rewardGold.textContent = `+${totalGold} 💰`;
         } else {
-            rewardStatus.textContent = 'NOUVEAU !';
+            rewardStatus.textContent = reward.rarity !== 'common' ? '✨ NOUVEAU ✨' : 'NOUVEAU !';
             rewardStatus.classList.remove('duplicate');
             rewardGold.textContent = `+${reward.gold} 💰`;
         }
 
-        if (reward.rarity === 'legendary') {
+        // 🔥 Confetti pour EPIC et LEGENDARY
+        if (reward.rarity === 'epic' || reward.rarity === 'legendary') {
             startConfetti();
         }
 
-    }, 2000);
+    }, 3800);
 }
+
+// ✨ Fonction pour créer des particules de rareté
+function createRarityParticles(rarity) {
+    const modal = document.querySelector('.modal-content');
+    if (!modal) return;
+    
+    const color = RARITIES[rarity].color;
+    
+    for (let i = 0; i < 30; i++) {
+        const particle = document.createElement('div');
+        const angle = (Math.PI * 2 * i) / 30;
+        const distance = 100 + Math.random() * 50;
+        const dx = Math.cos(angle) * distance;
+        const dy = Math.sin(angle) * distance;
+        
+        particle.style.cssText = `
+            position: absolute;
+            width: ${Math.random() * 8 + 4}px;
+            height: ${Math.random() * 8 + 4}px;
+            background: ${color};
+            border-radius: 50%;
+            pointer-events: none;
+            left: 50%;
+            top: 50%;
+            opacity: 0.8;
+            box-shadow: 0 0 10px ${color};
+            animation: particleExplode${i} 1.2s ease-out forwards;
+        `;
+        
+        // Créer une animation unique pour chaque particule
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes particleExplode${i} {
+                0% {
+                    transform: translate(0, 0) scale(1);
+                    opacity: 0.8;
+                }
+                100% {
+                    transform: translate(${dx}px, ${dy}px) scale(0);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        modal.appendChild(particle);
+        
+        setTimeout(() => {
+            particle.remove();
+            style.remove();
+        }, 1500);
+    }
+}
+
+// 🔊 Son simulé pour les raretés (vibration sur mobile)
+function playRaritySound(rarity) {
+    if (navigator.vibrate) {
+        if (rarity === 'legendary') {
+            navigator.vibrate([100, 50, 100, 50, 200]);
+        } else if (rarity === 'epic') {
+            navigator.vibrate([80, 40, 150]);
+        } else if (rarity === 'rare') {
+            navigator.vibrate([60, 30, 100]);
+        }
+    }
+}
+
+console.log('✅ Fonction openChest corrigée chargée');
+
+// ==========================================
+// ANIMATION PROGRESSIVE D'OUVERTURE DE COFFRE
+// À REMPLACER dans java.js
+// ==========================================
+
+function showRewardModal(reward, chestEmoji) {
+    const modal = document.getElementById('reward-modal');
+    const openingAnim = document.getElementById('chest-opening');
+    const resultDiv = document.getElementById('reward-result');
+    const chestIcon = document.getElementById('opening-chest-icon');
+
+    modal.classList.add('active');
+    chestIcon.textContent = chestEmoji;
+    openingAnim.style.display = 'flex';
+    resultDiv.style.display = 'none';
+
+    // 🎬 ÉTAPE 1: Animation du coffre qui tremble (2 secondes)
+    setTimeout(() => {
+        chestIcon.style.animation = 'chestShakeIntense 0.5s ease infinite';
+    }, 500);
+
+    // 🎬 ÉTAPE 2: Flash et explosion du coffre (3 secondes)
+    setTimeout(() => {
+        openingAnim.style.background = 'radial-gradient(circle, rgba(255,255,255,0.3), transparent)';
+        openingAnim.style.transition = 'background 0.3s';
+        
+        setTimeout(() => {
+            openingAnim.style.background = 'transparent';
+        }, 300);
+    }, 2500);
+
+    // 🎬 ÉTAPE 3: Révélation de la rareté (3.5 secondes)
+    setTimeout(() => {
+        openingAnim.innerHTML = `
+            <div class="rarity-reveal" style="
+                font-size: 3rem;
+                font-weight: 900;
+                color: ${RARITIES[reward.rarity].color};
+                text-shadow: 0 0 30px ${RARITIES[reward.rarity].glowColor};
+                animation: rarityPulse 0.8s ease;
+            ">
+                ${RARITIES[reward.rarity].name.toUpperCase()}
+            </div>
+        `;
+    }, 3000);
+
+    // 🎬 ÉTAPE 4: Si RARE/EPIC/LEGENDARY, animation spéciale (4.5 secondes)
+    if (reward.rarity !== 'common') {
+        setTimeout(() => {
+            createRarityParticles(reward.rarity);
+            playRaritySound(reward.rarity);
+        }, 3500);
+    }
+
+    // 🎬 ÉTAPE 5: Révélation finale de l'item (5 secondes)
+    setTimeout(() => {
+        openingAnim.style.display = 'none';
+        resultDiv.style.display = 'block';
+
+        const rarityBadge = document.getElementById('reward-rarity');
+        const rewardIcon = document.getElementById('reward-icon');
+        const rewardName = document.getElementById('reward-name');
+        const rewardStatus = document.getElementById('reward-status');
+        const rewardGold = document.getElementById('reward-gold-display');
+        const rewardItem = document.getElementById('reward-item');
+
+        const rarity = RARITIES[reward.rarity];
+        rewardItem.className = `reward-item rarity-${reward.rarity}`;
+        rewardItem.style.setProperty('--reward-rarity-color', rarity.color);
+        rewardItem.style.setProperty('--reward-rarity-glow', rarity.glowColor);
+
+        rarityBadge.textContent = rarity.name.toUpperCase();
+        rarityBadge.style.background = rarity.color;
+        rarityBadge.style.boxShadow = `0 4px 15px ${rarity.glowColor}`;
+
+        if (reward.item) {
+            rewardIcon.textContent = reward.item.emoji;
+            rewardName.textContent = reward.item.name;
+        } else {
+            rewardIcon.textContent = '💰';
+            rewardName.textContent = 'Or';
+        }
+
+        if (reward.alreadyOwned) {
+            rewardStatus.textContent = `DÉJÀ POSSÉDÉ (+${reward.goldBonus} 💰)`;
+            rewardStatus.classList.add('duplicate');
+            const totalGold = reward.gold + reward.goldBonus;
+            rewardGold.textContent = `+${totalGold} 💰`;
+        } else {
+            rewardStatus.textContent = reward.rarity !== 'common' ? '✨ NOUVEAU ✨' : 'NOUVEAU !';
+            rewardStatus.classList.remove('duplicate');
+            rewardGold.textContent = `+${reward.gold} 💰`;
+            
+            // 🎉 Animation spéciale si nouveau personnage/skin rare+
+            if (reward.rarity !== 'common') {
+                rewardItem.style.animation = 'rewardFloatIntense 1.5s ease-in-out infinite';
+                startConfetti();
+            }
+        }
+
+        // 🔥 Confetti pour EPIC et LEGENDARY
+        if (reward.rarity === 'epic' || reward.rarity === 'legendary') {
+            startConfetti();
+        }
+
+    }, 4800);
+}
+
+// ✨ Fonction pour créer des particules de rareté
+function createRarityParticles(rarity) {
+    const modal = document.querySelector('.modal-content');
+    const color = RARITIES[rarity].color;
+    
+    for (let i = 0; i < 30; i++) {
+        const particle = document.createElement('div');
+        particle.style.cssText = `
+            position: absolute;
+            width: ${Math.random() * 8 + 4}px;
+            height: ${Math.random() * 8 + 4}px;
+            background: ${color};
+            border-radius: 50%;
+            pointer-events: none;
+            left: 50%;
+            top: 50%;
+            animation: particleExplode ${Math.random() * 0.5 + 0.8}s ease-out forwards;
+            opacity: 0.8;
+            box-shadow: 0 0 10px ${color};
+        `;
+        modal.appendChild(particle);
+        
+        setTimeout(() => particle.remove(), 1500);
+    }
+}
+
+// 🔊 Son simulé pour les raretés (vibration sur mobile)
+function playRaritySound(rarity) {
+    if (navigator.vibrate) {
+        if (rarity === 'legendary') {
+            navigator.vibrate([100, 50, 100, 50, 200]);
+        } else if (rarity === 'epic') {
+            navigator.vibrate([80, 40, 150]);
+        } else if (rarity === 'rare') {
+            navigator.vibrate([60, 30, 100]);
+        }
+    }
+}
+
+console.log('✅ Animation progressive chargée');
 
 function closeRewardModal() {
     const modal = document.getElementById('reward-modal');

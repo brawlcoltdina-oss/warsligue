@@ -1,64 +1,64 @@
 // ==========================================
 // WARSLIGUE — SYSTÈME DE COFFRES & RÉCOMPENSES 💰
+// VERSION ULTRA-NERFÉE + ANIMATION PROGRESSIVE
 // ==========================================
 
-// ✅ TYPES DE COFFRES
+// ✅ TYPES DE COFFRES (RÉCOMPENSES DRASTIQUEMENT RÉDUITES)
 const CHEST_TYPES = {
     basic: {
         name: "Coffre Basique",
         emoji: "📦",
-        cost: 0, // GRATUIT (cooldown 4h)
-        minGold: 50,
-        maxGold: 150,
+        cost: 0,
+        minGold: 5,
+        maxGold: 15,
         rarityWeights: {
-            common: 80,
-            rare: 15,
-            epic: 4,
-            legendary: 1
+            common: 99.5,
+            rare: 0.45,
+            epic: 0.04,
+            legendary: 0.01
         }
     },
     silver: {
         name: "Coffre Argent",
         emoji: "🎁",
-        cost: 100, // 100 OR
-        minGold: 100,
-        maxGold: 250,
+        cost: 100,
+        minGold: 10,
+        maxGold: 30,
         rarityWeights: {
-            common: 60,
-            rare: 30,
-            epic: 8,
-            legendary: 2
+            common: 98,
+            rare: 1.8,
+            epic: 0.18,
+            legendary: 0.02
         }
     },
     gold: {
         name: "Coffre Or",
         emoji: "💎",
-        cost: 250, // 250 OR
-        minGold: 200,
-        maxGold: 400,
+        cost: 250,
+        minGold: 25,
+        maxGold: 60,
         rarityWeights: {
-            common: 40,
-            rare: 40,
-            epic: 15,
-            legendary: 5
+            common: 95,
+            rare: 4.5,
+            epic: 0.45,
+            legendary: 0.05
         }
     },
     mega: {
         name: "Méga Coffre",
         emoji: "🏆",
-        cost: 500, // 500 OR
-        minGold: 350,
-        maxGold: 600,
+        cost: 500,
+        minGold: 50,
+        maxGold: 100,
         rarityWeights: {
-            common: 20,
-            rare: 45,
-            epic: 25,
-            legendary: 10
+            common: 88,
+            rare: 10,
+            epic: 1.8,
+            legendary: 0.2
         }
     }
 };
 
-// ✅ RARETÉS
 const RARITIES = {
     common: {
         name: "Commun",
@@ -82,7 +82,6 @@ const RARITIES = {
     }
 };
 
-// ✅ POOL D'ITEMS PAR RARETÉ
 const ITEM_POOLS = {
     common: [
         { type: 'character', key: 'warrior' },
@@ -103,12 +102,9 @@ const ITEM_POOLS = {
         { type: 'skin', key: 'assassin_shadow' },
         { type: 'skin', key: 'assassin_gold' }
     ],
-    legendary: [
-        // Futurs contenus légendaires
-    ]
+    legendary: []
 };
 
-// ✅ TIRAGE DE RARETÉ
 function rollRarity(weights) {
     const total = Object.values(weights).reduce((a, b) => a + b, 0);
     let random = Math.random() * total;
@@ -123,12 +119,11 @@ function rollRarity(weights) {
     return 'common';
 }
 
-// ✅ TIRAGE D'ITEM
 function rollItem(rarity) {
     const pool = ITEM_POOLS[rarity];
     
     if (!pool || pool.length === 0) {
-        return null; // Pas d'item de cette rareté
+        return null;
     }
     
     const itemData = pool[Math.floor(Math.random() * pool.length)];
@@ -152,18 +147,12 @@ function rollItem(rarity) {
     }
 }
 
-// ✅ TIRAGE COMPLET D'UN COFFRE
 function rollChestReward(chestType) {
     const chest = CHEST_TYPES[chestType];
     if (!chest) return null;
     
-    // 1. Tirer la rareté
     const rarity = rollRarity(chest.rarityWeights);
-    
-    // 2. Tirer un item de cette rareté
     const item = rollItem(rarity);
-    
-    // 3. Tirer l'or
     const gold = Math.floor(Math.random() * (chest.maxGold - chest.minGold + 1)) + chest.minGold;
     
     return {
@@ -173,7 +162,6 @@ function rollChestReward(chestType) {
     };
 }
 
-// ✅ VÉRIFIER SI LE JOUEUR POSSÈDE L'ITEM
 function playerOwnsItem(playerData, item) {
     if (!item) return false;
     
@@ -186,4 +174,4 @@ function playerOwnsItem(playerData, item) {
     }
 }
 
-console.log('✅ REWARDS SYSTEM chargé');
+console.log('✅ REWARDS SYSTEM chargé (VERSION NERFÉE)');

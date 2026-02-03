@@ -1006,3 +1006,154 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
         text-align: center;
     }
 }
+
+
+/* ==========================================
+   ANIMATIONS SUPPLÉMENTAIRES POUR COFFRES
+   À AJOUTER à la fin de style.css
+   ========================================== */
+
+/* Animation de tremblement intense pour le coffre */
+@keyframes chestShakeIntense {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    10% { transform: rotate(-8deg) scale(1.05); }
+    20% { transform: rotate(8deg) scale(1.05); }
+    30% { transform: rotate(-8deg) scale(1.08); }
+    40% { transform: rotate(8deg) scale(1.08); }
+    50% { transform: rotate(-6deg) scale(1.1); }
+    60% { transform: rotate(6deg) scale(1.1); }
+    70% { transform: rotate(-6deg) scale(1.08); }
+    80% { transform: rotate(6deg) scale(1.05); }
+    90% { transform: rotate(-4deg) scale(1.03); }
+}
+
+/* Animation de pulsation pour la rareté */
+@keyframes rarityPulse {
+    0% {
+        transform: scale(0.3);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Animation de float intense pour les items rares */
+@keyframes rewardFloatIntense {
+    0%, 100% {
+        transform: translateY(0) scale(1) rotate(0deg);
+    }
+    25% {
+        transform: translateY(-15px) scale(1.05) rotate(-3deg);
+    }
+    50% {
+        transform: translateY(-20px) scale(1.1) rotate(0deg);
+    }
+    75% {
+        transform: translateY(-15px) scale(1.05) rotate(3deg);
+    }
+}
+
+/* Animation d'explosion des particules */
+@keyframes particleExplode {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translate(
+            calc((var(--random-x, 50) - 50) * 3px),
+            calc((var(--random-y, 50) - 50) * 3px)
+        ) scale(0);
+        opacity: 0;
+    }
+}
+
+/* Style pour la révélation de rareté */
+.rarity-reveal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 200px;
+    font-family: 'Bungee', cursive;
+    letter-spacing: 0.1em;
+}
+
+/* Effet de lueur sur les items rares+ */
+.reward-item.rarity-rare,
+.reward-item.rarity-epic,
+.reward-item.rarity-legendary {
+    position: relative;
+    overflow: visible;
+}
+
+.reward-item.rarity-rare::before,
+.reward-item.rarity-epic::before,
+.reward-item.rarity-legendary::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    background: radial-gradient(circle, var(--reward-rarity-glow), transparent 70%);
+    animation: glowPulse 2s ease-in-out infinite;
+    pointer-events: none;
+    z-index: -1;
+}
+
+@keyframes glowPulse {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.1);
+    }
+}
+
+/* Animation spéciale pour LEGENDARY */
+.rarity-legendary .reward-icon {
+    animation: rewardFloatIntense 1.5s ease-in-out infinite, 
+               rainbowGlow 3s linear infinite;
+}
+
+@keyframes rainbowGlow {
+    0% { filter: drop-shadow(0 0 20px #ff0000) hue-rotate(0deg); }
+    25% { filter: drop-shadow(0 0 25px #00ff00) hue-rotate(90deg); }
+    50% { filter: drop-shadow(0 0 30px #0000ff) hue-rotate(180deg); }
+    75% { filter: drop-shadow(0 0 25px #ff00ff) hue-rotate(270deg); }
+    100% { filter: drop-shadow(0 0 20px #ff0000) hue-rotate(360deg); }
+}
+
+/* Message "NOUVEAU" amélioré pour les raretés élevées */
+.reward-status {
+    position: relative;
+}
+
+.reward-item.rarity-epic .reward-status,
+.reward-item.rarity-legendary .reward-status {
+    font-size: 1.1rem;
+    text-shadow: 0 0 10px var(--reward-rarity-color);
+    animation: textGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes textGlow {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+/* Modification du modal pour supporter les particules */
+.modal-content {
+    overflow: visible !important;
+}
