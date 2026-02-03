@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Warsligue - Bataille en Ligne</title>
-    <!-- Google Fonts FIRST, avant tout autre CSS -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Bungee&display=swap" rel="stylesheet">
@@ -74,9 +73,15 @@
             <div class="player-avatar" id="player-avatar">?</div>
             <div class="player-stats">
                 <h3 id="player-name">Joueur</h3>
-                <div class="trophies">
-                    <span class="trophy-icon">🏆</span>
-                    <span id="player-trophies">0</span>
+                <div class="stats-row">
+                    <div class="trophies">
+                        <span class="trophy-icon">🏆</span>
+                        <span id="player-trophies">0</span>
+                    </div>
+                    <div class="gold">
+                        <span class="gold-icon">💰</span>
+                        <span id="player-gold">0</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -86,65 +91,28 @@
     <div class="menu-content">
         <h1 class="game-title">WARSLIGUE</h1>
         <p class="menu-subtitle">Choisissez votre personnage et combattez !</p>
- 
-        <div class="player-stats">
-    <h3 id="player-name">Joueur</h3>
-    <div class="stats-row">
-        <div class="trophies">
-            <span class="trophy-icon">🏆</span>
-            <span id="player-trophies">0</span>
-        </div>
-        <div class="gold">
-            <span class="gold-icon">💰</span>
-            <span id="player-gold">0</span>
-        </div>
-    </div>
-</div>
-        <!-- CHARACTER SELECTION -->
-        <div class="character-selector" id="character-selector">
-            <div class="char-card active" data-char="warrior" onclick="selectCharacter('warrior')">
-                <div class="char-icon">⚔️</div>
-                <div class="char-name">Warrior</div>
-                <div class="char-stats">
-                    <span class="stat-hp">❤️ 100</span>
-                    <span class="stat-spd">💨 5</span>
-                </div>
-            </div>
-            <div class="char-card" data-char="assassin" onclick="selectCharacter('assassin')">
-                <div class="char-icon">🗡️</div>
-                <div class="char-name">Assassin</div>
-                <div class="char-stats">
-                    <span class="stat-hp">❤️ 75</span>
-                    <span class="stat-spd">💨 8</span>
-                </div>
-            </div>
-            <div class="char-card" data-char="mage" onclick="selectCharacter('mage')">
-                <div class="char-icon">🔮</div>
-                <div class="char-name">Mage</div>
-                <div class="char-stats">
-                    <span class="stat-hp">❤️ 80</span>
-                    <span class="stat-spd">💨 4</span>
-                </div>
-            </div>
-        </div>
 
-            <div class="menu-buttons">
-        <button id="play-btn" class="btn-large btn-primary">
-            <span class="btn-icon">⚔️</span><span>JOUER</span>
-        </button>
-        <button id="chests-btn" class="btn-large btn-secondary">
-            <span class="btn-icon">📦</span><span>COFFRES</span>
-        </button>
-        <button id="shop-btn" class="btn-large btn-secondary">
-            <span class="btn-icon">🛒</span><span>BOUTIQUE</span>
-         </button>
+        <!-- CHARACTER SELECTION (dynamique) -->
+        <div class="character-selector" id="character-selector"></div>
+
+        <div class="menu-buttons">
+            <button id="play-btn" class="btn-large btn-primary">
+                <span class="btn-icon">⚔️</span><span>JOUER</span>
+            </button>
+            <button id="chests-btn" class="btn-large btn-secondary">
+                <span class="btn-icon">📦</span><span>COFFRES</span>
+            </button>
+            <button id="shop-btn" class="btn-large btn-secondary">
+                <span class="btn-icon">🛒</span><span>BOUTIQUE</span>
+            </button>
             <button id="leaderboard-btn" class="btn-large btn-secondary">
                 <span class="btn-icon">🏅</span><span>CLASSEMENT</span>
-             </button>
+            </button>
         </div>
     </div>
 </div>
-<!-- ===================== CHESTS SCREEN (AVEC OR) ===================== -->
+
+<!-- ===================== CHESTS SCREEN ===================== -->
 <div id="chests-screen" class="screen">
     <div class="chests-container">
         <div class="chests-header">
@@ -155,15 +123,13 @@
             </div>
         </div>
 
-        <div class="chests-grid" id="chests-grid">
-            <!-- Généré dynamiquement -->
-        </div>
+        <div class="chests-grid" id="chests-grid"></div>
 
         <button id="close-chests" class="btn-secondary chests-close-btn">Retour</button>
     </div>
 </div>
 
-<!-- ===================== REWARD MODAL (AVEC OR) ===================== -->
+<!-- ===================== REWARD MODAL ===================== -->
 <div id="reward-modal" class="modal">
     <div class="modal-overlay" id="reward-overlay"></div>
     <div class="modal-content reward-reveal">
@@ -189,6 +155,7 @@
         </div>
     </div>
 </div>
+
 <!-- ===================== SHOP SCREEN ===================== -->
 <div id="shop-screen" class="screen">
     <div class="shop-container">
@@ -300,8 +267,12 @@
         <h2 id="result-title" class="result-title">VICTOIRE!</h2>
         <div class="result-stats">
             <div class="stat-row">
-                <span class="stat-label">Changement</span>
+                <span class="stat-label">Trophées</span>
                 <span id="result-trophies" class="stat-value trophy-change">+10 🏆</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Or gagné</span>
+                <span id="result-gold" class="stat-value gold-change">+50 💰</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">Total trophées</span>
@@ -327,10 +298,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
-
 <!-- GAME SCRIPTS (ORDRE IMPORTANT!) -->
 <script src="character.js"></script>
-<script src="rewards-gold.js"></script>  <!-- ✅ Nouveau fichier -->
+<script src="rewards gold.js"></script>
 <script src="java.js"></script>
 
 </body>

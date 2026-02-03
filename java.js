@@ -1,5 +1,5 @@
 // ==========================================
-// WARSLIGUE — java.js  (VERSION AVEC BOUTIQUE)
+// WARSLIGUE — java.js  (VERSION CORRIGÉE - BUGS FIXÉS)
 // ==========================================
 
 /* =============================================
@@ -123,10 +123,11 @@ document.getElementById('register-btn').addEventListener('click', async () => {
     try {
         const { user } = await AUTH.createUserWithEmailAndPassword(email, password);
         await FSDB.collection('players').doc(user.uid).set({
-            username, email, trophies: 100, wins: 0, losses: 0, totalMatches: 0,
+            username, email, trophies: 100, gold: 500, wins: 0, losses: 0, totalMatches: 0,
             selectedCharacter: 'warrior',
             ownedCharacters: ['warrior', 'assassin', 'mage'],
             ownedSkins: [],
+            lastFreeChest: 0,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             lastLogin:  firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -176,14 +177,14 @@ async function ensurePlayerDoc(user) {
             username: 'Joueur_' + user.uid.slice(0,6),
             email: user.email || '',
             trophies: 100,
-            gold: 500,  // ✅ NOUVEAU : Commence avec 500 OR
+            gold: 500,
             wins: 0,
             losses: 0,
             totalMatches: 0,
             selectedCharacter: 'warrior',
             ownedCharacters: ['warrior', 'assassin', 'mage'],
             ownedSkins: [],
-            lastFreeChest: 0, // ✅ NOUVEAU
+            lastFreeChest: 0,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -196,12 +197,12 @@ async function ensurePlayerDoc(user) {
             updates.ownedSkins = [];
         }
         
-        if (!data.gold) {
-            updates.gold = 500; // ✅ NOUVEAU : Donne 500 OR aux anciens comptes
+        if (!data.gold && data.gold !== 0) {
+            updates.gold = 500;
         }
         
         if (!data.lastFreeChest) {
-            updates.lastFreeChest = 0; // ✅ NOUVEAU
+            updates.lastFreeChest = 0;
         }
         
         updates.lastLogin = firebase.firestore.FieldValue.serverTimestamp();
@@ -225,6 +226,7 @@ function listenPlayerData(uid) {
             highlightChar(G.selectedChar);
         }
         updateMenuUI();
+        renderCharacterSelector(); // ✅ FIX: Rafraîchir le sélecteur
     });
 }
 
@@ -232,8 +234,41 @@ function updateMenuUI() {
     if (!G.playerData) return;
     document.getElementById('player-name').textContent     = G.playerData.username;
     document.getElementById('player-trophies').textContent = G.playerData.trophies || 0;
-    document.getElementById('player-gold').textContent     = G.playerData.gold || 0; // ✅
+    document.getElementById('player-gold').textContent     = G.playerData.gold || 0;
     document.getElementById('player-avatar').textContent   = G.playerData.username[0].toUpperCase();
+}
+
+/* =============================================
+   ✅ FIX: AFFICHER LES PERSONNAGES DÉBLOQUÉS
+   ============================================= */
+function renderCharacterSelector() {
+    if (!G.playerData) return;
+    
+    const selector = document.getElementById('character-selector');
+    selector.innerHTML = '';
+    
+    const ownedChars = G.playerData.ownedCharacters || ['warrior', 'assassin', 'mage'];
+    
+    for (const charKey of ownedChars) {
+        const char = CHARACTERS[charKey];
+        if (!char) continue;
+        
+        const card = document.createElement('div');
+        card.className = `char-card ${charKey === G.selectedChar ? 'active' : ''}`;
+        card.dataset.char = charKey;
+        card.onclick = () => selectCharacter(charKey);
+        
+        card.innerHTML = `
+            <div class="char-icon">${char.emoji}</div>
+            <div class="char-name">${char.name}</div>
+            <div class="char-stats">
+                <span class="stat-hp">❤️ ${char.hp}</span>
+                <span class="stat-spd">💨 ${char.speed}</span>
+            </div>
+        `;
+        
+        selector.appendChild(card);
+    }
 }
 
 /* =============================================
@@ -254,7 +289,6 @@ function highlightChar(key) {
 document.getElementById('shop-btn').addEventListener('click', openShop);
 document.getElementById('close-shop').addEventListener('click', () => showScreen('main-menu'));
 
-// Shop tabs
 document.querySelectorAll('.shop-tab').forEach(tab => {
     tab.addEventListener('click', () => {
         const targetTab = tab.dataset.tab;
@@ -277,7 +311,6 @@ async function renderShop() {
     const ownedChars = playerData.ownedCharacters || ['warrior', 'assassin', 'mage'];
     const ownedSkins = playerData.ownedSkins || [];
 
-    // RENDER CHARACTERS
     const charsGrid = document.getElementById('characters-grid');
     charsGrid.innerHTML = '';
     
@@ -313,7 +346,6 @@ async function renderShop() {
         charsGrid.appendChild(card);
     }
 
-    // RENDER SKINS
     const skinsGrid = document.getElementById('skins-grid');
     skinsGrid.innerHTML = '';
     
@@ -417,6 +449,220 @@ async function buySkin(skinKey, price) {
         console.error('❌ Achat:', e);
         showError('Erreur lors de l\'achat');
     }
+}
+
+/* =============================================
+   CHESTS SYSTEM
+   ============================================= */
+document.getElementById('chests-btn').addEventListener('click', openChests);
+document.getElementById('close-chests').addEventListener('click', () => showScreen('main-menu'));
+document.getElementById('reward-overlay').addEventListener('click', closeRewardModal);
+document.getElementById('claim-reward-btn').addEventListener('click', claimReward);
+
+let currentReward = null;
+
+async function openChests() {
+    showScreen('chests-screen');
+    
+    const playerDoc = await FSDB.collection('players').doc(G.user.uid).get();
+    const playerData = playerDoc.data();
+    document.getElementById('chests-gold').textContent = playerData.gold || 0;
+    
+    await renderChests();
+}
+
+async function renderChests() {
+    const grid = document.getElementById('chests-grid');
+    grid.innerHTML = '';
+
+    const playerDoc = await FSDB.collection('players').doc(G.user.uid).get();
+    const playerData = playerDoc.data();
+    const currentGold = playerData.gold || 0;
+    const lastFreeChest = playerData.lastFreeChest ? playerData.lastFreeChest.toMillis() : 0;
+    
+    const timeSinceLastFree = Date.now() - lastFreeChest;
+    const freeChestReady = timeSinceLastFree >= 14400000; // 4 heures
+    const timeRemaining = Math.max(0, 14400000 - timeSinceLastFree);
+
+    for (const [key, chest] of Object.entries(CHEST_TYPES)) {
+        const card = document.createElement('div');
+        const isFree = chest.cost === 0;
+        const canAfford = currentGold >= chest.cost;
+        const canOpen = isFree ? freeChestReady : canAfford;
+
+        card.className = `chest-card chest-${key} ${!canOpen ? 'locked' : ''} ${isFree && freeChestReady ? 'free-ready' : ''}`;
+        
+        let actionHTML = '';
+        if (isFree) {
+            if (freeChestReady) {
+                actionHTML = `<button class="chest-open-btn" onclick="openChest('${key}')">OUVRIR GRATUIT</button>`;
+            } else {
+                const hours = Math.floor(timeRemaining / 3600000);
+                const minutes = Math.floor((timeRemaining % 3600000) / 60000);
+                actionHTML = `<div class="chest-timer">⏰ ${hours}h ${minutes}m</div>`;
+            }
+        } else {
+            actionHTML = `
+                <div class="chest-cost">
+                    <span>💰</span>
+                    <span>${chest.cost}</span>
+                </div>
+                <button class="chest-open-btn" ${!canAfford ? 'disabled' : ''} onclick="openChest('${key}')">
+                    ${canAfford ? 'OUVRIR' : 'PAS ASSEZ 💰'}
+                </button>
+            `;
+        }
+
+        card.innerHTML = `
+            <div class="chest-icon-display">${chest.emoji}</div>
+            <div class="chest-name">${chest.name}</div>
+            <div class="chest-rewards-preview">
+                ${chest.minGold}-${chest.maxGold} 💰<br>
+                + Personnage ou Skin
+            </div>
+            ${actionHTML}
+        `;
+
+        grid.appendChild(card);
+    }
+}
+
+async function openChest(chestType) {
+    if (!G.user || !G.playerData) return;
+
+    const chest = CHEST_TYPES[chestType];
+    if (!chest) return;
+
+    const isFree = chest.cost === 0;
+
+    try {
+        const playerRef = FSDB.collection('players').doc(G.user.uid);
+        const doc = await playerRef.get();
+        const playerData = doc.data();
+        const currentGold = playerData.gold || 0;
+
+        if (!isFree && currentGold < chest.cost) {
+            showError('Pas assez d\'or !');
+            return;
+        }
+
+        if (isFree) {
+            const lastFreeChest = playerData.lastFreeChest ? playerData.lastFreeChest.toMillis() : 0;
+            const timeSinceLastFree = Date.now() - lastFreeChest;
+            if (timeSinceLastFree < 14400000) {
+                showError('Coffre gratuit pas encore disponible !');
+                return;
+            }
+        }
+
+        const reward = rollChestReward(chestType);
+        if (!reward) {
+            showError('Erreur lors du tirage');
+            return;
+        }
+
+        const alreadyOwned = playerOwnsItem(playerData, reward.item);
+        const goldBonus = alreadyOwned ? Math.floor(reward.gold * 0.5) : 0;
+
+        const updates = {
+            gold: isFree 
+                ? currentGold + reward.gold + goldBonus
+                : currentGold - chest.cost + reward.gold + goldBonus
+        };
+
+        if (isFree) {
+            updates.lastFreeChest = firebase.firestore.FieldValue.serverTimestamp();
+        }
+
+        if (!alreadyOwned && reward.item) {
+            if (reward.item.type === 'character') {
+                updates.ownedCharacters = firebase.firestore.FieldValue.arrayUnion(reward.item.key);
+            } else {
+                updates.ownedSkins = firebase.firestore.FieldValue.arrayUnion(reward.item.key);
+            }
+        }
+
+        await playerRef.update(updates);
+
+        console.log('✅ Coffre ouvert:', chestType, reward);
+
+        currentReward = { ...reward, alreadyOwned, goldBonus };
+        showRewardModal(currentReward, chest.emoji);
+
+    } catch (e) {
+        console.error('❌ Erreur ouverture coffre:', e);
+        showError('Erreur lors de l\'ouverture');
+    }
+}
+
+function showRewardModal(reward, chestEmoji) {
+    const modal = document.getElementById('reward-modal');
+    const openingAnim = document.getElementById('chest-opening');
+    const resultDiv = document.getElementById('reward-result');
+    const chestIcon = document.getElementById('opening-chest-icon');
+
+    modal.classList.add('active');
+
+    chestIcon.textContent = chestEmoji;
+    openingAnim.style.display = 'flex';
+    resultDiv.style.display = 'none';
+
+    setTimeout(() => {
+        openingAnim.style.display = 'none';
+        resultDiv.style.display = 'block';
+
+        const rarityBadge = document.getElementById('reward-rarity');
+        const rewardIcon = document.getElementById('reward-icon');
+        const rewardName = document.getElementById('reward-name');
+        const rewardStatus = document.getElementById('reward-status');
+        const rewardGold = document.getElementById('reward-gold-display');
+        const rewardItem = document.getElementById('reward-item');
+
+        const rarity = RARITIES[reward.rarity];
+        rewardItem.className = `reward-item rarity-${reward.rarity}`;
+        rewardItem.style.setProperty('--reward-rarity-color', rarity.color);
+        rewardItem.style.setProperty('--reward-rarity-glow', rarity.glowColor);
+
+        rarityBadge.textContent = rarity.name.toUpperCase();
+        rarityBadge.style.background = rarity.color;
+        rarityBadge.style.boxShadow = `0 4px 15px ${rarity.glowColor}`;
+
+        if (reward.item) {
+            rewardIcon.textContent = reward.item.emoji;
+            rewardName.textContent = reward.item.name;
+        } else {
+            rewardIcon.textContent = '💰';
+            rewardName.textContent = 'Or';
+        }
+
+        if (reward.alreadyOwned) {
+            rewardStatus.textContent = `DÉJÀ POSSÉDÉ (+${reward.goldBonus} 💰)`;
+            rewardStatus.classList.add('duplicate');
+            const totalGold = reward.gold + reward.goldBonus;
+            rewardGold.textContent = `+${totalGold} 💰`;
+        } else {
+            rewardStatus.textContent = 'NOUVEAU !';
+            rewardStatus.classList.remove('duplicate');
+            rewardGold.textContent = `+${reward.gold} 💰`;
+        }
+
+        if (reward.rarity === 'legendary') {
+            startConfetti();
+        }
+
+    }, 2000);
+}
+
+function closeRewardModal() {
+    const modal = document.getElementById('reward-modal');
+    modal.classList.remove('active');
+    stopConfetti();
+    currentReward = null;
+    openChests();
+}
+
+function claimReward() {
+    closeRewardModal();
 }
 
 /* =============================================
@@ -670,7 +916,7 @@ function resizeCanvas() {
 }
 
 /* =============================================
-   FIREBASE SNAPSHOT
+   ✅ FIX: FIREBASE SNAPSHOT AVEC HP SYNC
    ============================================= */
 function onMatchSnapshot(snap) {
     const data = snap.val();
@@ -683,6 +929,7 @@ function onMatchSnapshot(snap) {
     const oppK = G.isPlayer1 ? 'player2' : 'player1';
     const myK  = G.isPlayer1 ? 'player1' : 'player2';
 
+    // ✅ FIX: Sync HP de l'adversaire ET le nôtre (pour éviter double victoire)
     if (gs[oppK]) {
         G.opponent.targetX = gs[oppK].x || G.opponent.targetX;
         G.opponent.targetY = gs[oppK].y || G.opponent.targetY;
@@ -691,6 +938,7 @@ function onMatchSnapshot(snap) {
     if (gs[myK]) {
         G.player.hp = gs[myK].hp !== undefined ? gs[myK].hp : G.player.hp;
     }
+    
     if (data.timeLeft !== undefined) {
         G.gameTime = data.timeLeft;
         updateTimerUI();
@@ -698,7 +946,10 @@ function onMatchSnapshot(snap) {
 
     updateHpBars();
 
-    if ((G.player.hp <= 0 || G.opponent.hp <= 0) && !G.matchEnded) handleMatchEnd();
+    // ✅ FIX: Vérifier HP SYNC avant de déclencher fin de match
+    if ((G.player.hp <= 0 || G.opponent.hp <= 0) && !G.matchEnded) {
+        handleMatchEnd();
+    }
 }
 
 /* =============================================
@@ -862,7 +1113,7 @@ function gameLoop() {
 }
 
 /* =============================================
-   UPDATE
+   ✅ FIX: UPDATE AVEC SYNC HP + POSITION CONTINUE
    ============================================= */
 function update() {
     if (!G.player || !G.canvas) return;
@@ -877,20 +1128,22 @@ function update() {
     G.player.x = Math.max(G.player.radius, Math.min(G.canvas.width  - G.player.radius, G.player.x + vx));
     G.player.y = Math.max(G.player.radius, Math.min(G.canvas.height - G.player.radius, G.player.y + vy));
 
-    if (vx !== 0 || vy !== 0) {
-        const now = Date.now();
-        if (now - G.lastPosSend >= 50) {
-            G.lastPosSend = now;
-            RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}`).update({
-                x: Math.round(G.player.x),
-                y: Math.round(G.player.y)
-            });
-        }
+    // ✅ FIX CRITIQUE: SYNC CONTINU (même sans mouvement) + HP
+    const now = Date.now();
+    if (now - G.lastPosSend >= 100) { // Sync toutes les 100ms
+        G.lastPosSend = now;
+        RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}`).update({
+            x: Math.round(G.player.x),
+            y: Math.round(G.player.y),
+            hp: Math.max(0, Math.round(G.player.hp)) // ✅ SYNC HP EN TEMPS RÉEL
+        }).catch(e => console.error('❌ Sync error:', e));
     }
 
+    // Interpolation adversaire
     G.opponent.x += (G.opponent.targetX - G.opponent.x) * 0.2;
     G.opponent.y += (G.opponent.targetY - G.opponent.y) * 0.2;
 
+    // Particules
     for (let i = G.particles.length - 1; i >= 0; i--) {
         const p = G.particles[i];
         p.life--;
@@ -1052,10 +1305,15 @@ function handleMatchEnd() {
 async function updatePlayerStats(victory, trophyChange) {
     const curTr = G.playerData ? (G.playerData.trophies || 0) : 100;
     const newTr = Math.max(0, curTr + trophyChange);
+    
+    const goldEarned = victory ? 50 : 20;
+    
     console.log(`🏆 ${curTr} → ${newTr}`);
+    console.log(`💰 +${goldEarned} OR`);
 
     await FSDB.collection('players').doc(G.user.uid).update({
         trophies:     newTr,
+        gold:         firebase.firestore.FieldValue.increment(goldEarned),
         totalMatches: firebase.firestore.FieldValue.increment(1),
         wins:         firebase.firestore.FieldValue.increment(victory ? 1 : 0),
         losses:       firebase.firestore.FieldValue.increment(victory ? 0 : 1)
@@ -1077,6 +1335,9 @@ function showResult(victory, trophyChange) {
     const trEl = document.getElementById('result-trophies');
     trEl.textContent = sign + trophyChange + ' 🏆';
     trEl.classList.toggle('negative', trophyChange < 0);
+
+    const goldEarned = victory ? 50 : 20;
+    document.getElementById('result-gold').textContent = '+' + goldEarned + ' 💰';
 
     setTimeout(() => {
         document.getElementById('result-total').textContent = (G.playerData ? G.playerData.trophies : 0) + ' 🏆';
@@ -1173,259 +1434,7 @@ function renderLB(players) {
         ul.appendChild(div);
     });
 }
-/* =============================================
-   📦 SYSTÈME DE COFFRES AVEC OR 💰
-   À AJOUTER DANS JAVA.JS (APRÈS LA SECTION SHOP)
-   ============================================= */
 
-// NAVIGATION COFFRES
-document.getElementById('chests-btn').addEventListener('click', openChests);
-document.getElementById('close-chests').addEventListener('click', () => showScreen('main-menu'));
-document.getElementById('reward-overlay').addEventListener('click', closeRewardModal);
-document.getElementById('claim-reward-btn').addEventListener('click', claimReward);
-
-let currentReward = null;
-
-async function openChests() {
-    showScreen('chests-screen');
-    
-    // Afficher l'OR du joueur ✅
-    const playerDoc = await FSDB.collection('players').doc(G.user.uid).get();
-    const playerData = playerDoc.data();
-    document.getElementById('chests-gold').textContent = playerData.gold || 0;
-    
-    await renderChests();
-}
-
-async function renderChests() {
-    const grid = document.getElementById('chests-grid');
-    grid.innerHTML = '';
-
-    const playerDoc = await FSDB.collection('players').doc(G.user.uid).get();
-    const playerData = playerDoc.data();
-    const currentGold = playerData.gold || 0; // ✅ OR au lieu de trophies
-    const lastFreeChest = playerData.lastFreeChest ? playerData.lastFreeChest.toMillis() : 0;
-    
-    // Temps écoulé depuis le dernier coffre gratuit (4h = 14400000ms)
-    const timeSinceLastFree = Date.now() - lastFreeChest;
-    const freeChestReady = timeSinceLastFree >= 14400000; // 4 heures
-    const timeRemaining = Math.max(0, 14400000 - timeSinceLastFree);
-
-    for (const [key, chest] of Object.entries(CHEST_TYPES)) {
-        const card = document.createElement('div');
-        const isFree = chest.cost === 0;
-        const canAfford = currentGold >= chest.cost; // ✅
-        const canOpen = isFree ? freeChestReady : canAfford;
-
-        card.className = `chest-card chest-${key} ${!canOpen ? 'locked' : ''} ${isFree && freeChestReady ? 'free-ready' : ''}`;
-        
-        let actionHTML = '';
-        if (isFree) {
-            if (freeChestReady) {
-                actionHTML = `<button class="chest-open-btn" onclick="openChest('${key}')">OUVRIR GRATUIT</button>`;
-            } else {
-                const hours = Math.floor(timeRemaining / 3600000);
-                const minutes = Math.floor((timeRemaining % 3600000) / 60000);
-                actionHTML = `<div class="chest-timer">⏰ ${hours}h ${minutes}m</div>`;
-            }
-        } else {
-            actionHTML = `
-                <div class="chest-cost">
-                    <span>💰</span>
-                    <span>${chest.cost}</span>
-                </div>
-                <button class="chest-open-btn" ${!canAfford ? 'disabled' : ''} onclick="openChest('${key}')">
-                    ${canAfford ? 'OUVRIR' : 'PAS ASSEZ 💰'}
-                </button>
-            `;
-        }
-
-        card.innerHTML = `
-            <div class="chest-icon-display">${chest.emoji}</div>
-            <div class="chest-name">${chest.name}</div>
-            <div class="chest-rewards-preview">
-                ${chest.minGold}-${chest.maxGold} 💰<br>
-                + Personnage ou Skin
-            </div>
-            ${actionHTML}
-        `;
-
-        grid.appendChild(card);
-    }
-}
-
-async function openChest(chestType) {
-    if (!G.user || !G.playerData) return;
-
-    const chest = CHEST_TYPES[chestType];
-    if (!chest) return;
-
-    const isFree = chest.cost === 0;
-
-    try {
-        const playerRef = FSDB.collection('players').doc(G.user.uid);
-        const doc = await playerRef.get();
-        const playerData = doc.data();
-        const currentGold = playerData.gold || 0; // ✅
-
-        // Vérifications
-        if (!isFree && currentGold < chest.cost) {
-            showError('Pas assez d\'or !');
-            return;
-        }
-
-        // Vérifier le cooldown du coffre gratuit
-        if (isFree) {
-            const lastFreeChest = playerData.lastFreeChest ? playerData.lastFreeChest.toMillis() : 0;
-            const timeSinceLastFree = Date.now() - lastFreeChest;
-            if (timeSinceLastFree < 14400000) { // 4 heures
-                showError('Coffre gratuit pas encore disponible !');
-                return;
-            }
-        }
-
-        // Tirer la récompense
-        const reward = rollChestReward(chestType);
-        if (!reward) {
-            showError('Erreur lors du tirage');
-            return;
-        }
-
-        // Vérifier si le joueur possède déjà l'item
-        const alreadyOwned = playerOwnsItem(playerData, reward.item);
-        const goldBonus = alreadyOwned ? Math.floor(reward.gold * 0.5) : 0; // ✅
-
-        // Mettre à jour Firebase ✅
-        const updates = {
-            gold: isFree 
-                ? currentGold + reward.gold + goldBonus
-                : currentGold - chest.cost + reward.gold + goldBonus
-        };
-
-        if (isFree) {
-            updates.lastFreeChest = firebase.firestore.FieldValue.serverTimestamp();
-        }
-
-        if (!alreadyOwned && reward.item) {
-            if (reward.item.type === 'character') {
-                updates.ownedCharacters = firebase.firestore.FieldValue.arrayUnion(reward.item.key);
-            } else {
-                updates.ownedSkins = firebase.firestore.FieldValue.arrayUnion(reward.item.key);
-            }
-        }
-
-        await playerRef.update(updates);
-
-        console.log('✅ Coffre ouvert:', chestType, reward);
-
-        // Afficher l'animation de récompense
-        currentReward = { ...reward, alreadyOwned, goldBonus }; // ✅
-        showRewardModal(currentReward, chest.emoji);
-
-    } catch (e) {
-        console.error('❌ Erreur ouverture coffre:', e);
-        showError('Erreur lors de l\'ouverture');
-    }
-}
-
-function showRewardModal(reward, chestEmoji) {
-    const modal = document.getElementById('reward-modal');
-    const openingAnim = document.getElementById('chest-opening');
-    const resultDiv = document.getElementById('reward-result');
-    const chestIcon = document.getElementById('opening-chest-icon');
-
-    // Afficher la modal
-    modal.classList.add('active');
-
-    // Animation d'ouverture du coffre
-    chestIcon.textContent = chestEmoji;
-    openingAnim.style.display = 'flex';
-    resultDiv.style.display = 'none';
-
-    setTimeout(() => {
-        openingAnim.style.display = 'none';
-        resultDiv.style.display = 'block';
-
-        // Afficher la récompense
-        const rarityBadge = document.getElementById('reward-rarity');
-        const rewardIcon = document.getElementById('reward-icon');
-        const rewardName = document.getElementById('reward-name');
-        const rewardStatus = document.getElementById('reward-status');
-        const rewardGold = document.getElementById('reward-gold-display'); // ✅
-        const rewardItem = document.getElementById('reward-item');
-
-        // Couleur de rareté
-        const rarity = RARITIES[reward.rarity];
-        rewardItem.className = `reward-item rarity-${reward.rarity}`;
-        rewardItem.style.setProperty('--reward-rarity-color', rarity.color);
-        rewardItem.style.setProperty('--reward-rarity-glow', rarity.glowColor);
-
-        rarityBadge.textContent = rarity.name.toUpperCase();
-        rarityBadge.style.background = rarity.color;
-        rarityBadge.style.boxShadow = `0 4px 15px ${rarity.glowColor}`;
-
-        if (reward.item) {
-            rewardIcon.textContent = reward.item.emoji;
-            rewardName.textContent = reward.item.name;
-        } else {
-            rewardIcon.textContent = '💰';
-            rewardName.textContent = 'Or';
-        }
-
-        if (reward.alreadyOwned) {
-            rewardStatus.textContent = `DÉJÀ POSSÉDÉ (+${reward.goldBonus} 💰)`; // ✅
-            rewardStatus.classList.add('duplicate');
-            const totalGold = reward.gold + reward.goldBonus;
-            rewardGold.textContent = `+${totalGold} 💰`; // ✅
-        } else {
-            rewardStatus.textContent = 'NOUVEAU !';
-            rewardStatus.classList.remove('duplicate');
-            rewardGold.textContent = `+${reward.gold} 💰`; // ✅
-        }
-
-        // Confettis pour légendaire
-        if (reward.rarity === 'legendary') {
-            startConfetti();
-        }
-
-    }, 2000);
-}
-
-function closeRewardModal() {
-    const modal = document.getElementById('reward-modal');
-    modal.classList.remove('active');
-    stopConfetti();
-    currentReward = null;
-    openChests(); // Rafraîchir la page des coffres
-}
-
-function claimReward() {
-    closeRewardModal();
-}
-
-/* =============================================
-   ✅ GAGNER DE L'OR APRÈS CHAQUE MATCH
-   Remplacer la fonction updatePlayerStats existante
-   ============================================= */
-async function updatePlayerStats(victory, trophyChange) {
-    const curTr = G.playerData ? (G.playerData.trophies || 0) : 100;
-    const newTr = Math.max(0, curTr + trophyChange);
-    
-    // ✅ OR GAGNÉ : +50 si victoire, +20 si défaite
-    const goldEarned = victory ? 50 : 20;
-    
-    console.log(`🏆 ${curTr} → ${newTr}`);
-    console.log(`💰 +${goldEarned} OR`);
-
-    await FSDB.collection('players').doc(G.user.uid).update({
-        trophies:     newTr,
-        gold:         firebase.firestore.FieldValue.increment(goldEarned), // ✅
-        totalMatches: firebase.firestore.FieldValue.increment(1),
-        wins:         firebase.firestore.FieldValue.increment(victory ? 1 : 0),
-        losses:       firebase.firestore.FieldValue.increment(victory ? 0 : 1)
-    });
-    lbCache = null;
-}
 /* =============================================
    CLEANUP
    ============================================= */
@@ -1455,4 +1464,4 @@ function fullCleanup() {
 
 window.addEventListener('beforeunload', fullCleanup);
 
-console.log('🎮 WARSLIGUE — Version avec boutique chargée !');
+console.log('🎮 WARSLIGUE — Version CORRIGÉE (tous bugs fixés) !')

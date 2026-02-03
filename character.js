@@ -58,7 +58,6 @@ const CHARACTERS = {
         price: 0,
         rarity: 'common'
     },
-    // NOUVEAUX PERSONNAGES DÉBLOQUABLES
     tank: {
         name: "Tank",
         emoji: "🛡️",
@@ -137,7 +136,6 @@ const CHARACTERS = {
     }
 };
 
-// SKINS DÉBLOQUABLES (change juste la couleur)
 const SKINS = {
     warrior_red: {
         name: "Warrior Crimson",

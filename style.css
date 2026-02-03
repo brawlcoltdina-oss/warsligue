@@ -20,7 +20,6 @@
     --hp-danger:    #ff1744;
 }
 
-/* ---- RESET ---- */
 *, *::before, *::after {
     margin: 0; padding: 0;
     box-sizing: border-box;
@@ -37,9 +36,6 @@ html, body {
     -webkit-user-select: none;
 }
 
-/* ========================================
-   SCREENS
-   ======================================== */
 .screen {
     position: fixed; inset: 0;
     display: none;
@@ -52,9 +48,6 @@ html, body {
     opacity: 1;
 }
 
-/* ========================================
-   GAME TITLE (shared)
-   ======================================== */
 .game-title {
     font-family: 'Bungee', cursive;
     background: linear-gradient(135deg, var(--primary), var(--accent));
@@ -65,9 +58,7 @@ html, body {
     line-height: 1.1;
 }
 
-/* ========================================
-   LOADING SCREEN
-   ======================================== */
+/* ===== LOADING ===== */
 #loading-screen {
     justify-content: center;
     align-items: center;
@@ -91,9 +82,7 @@ html, body {
 }
 .loading-text { color: var(--gray-text); font-size: 1rem; }
 
-/* ========================================
-   AUTH SCREEN
-   ======================================== */
+/* ===== AUTH ===== */
 #auth-screen {
     justify-content: center;
     align-items: center;
@@ -124,9 +113,7 @@ html, body {
 .auth-form.active { display: block; animation: fadeIn .3s ease; }
 .auth-form h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: 1.3rem; color: var(--light-text); }
 
-.input-wrap {
-    position: relative; margin-bottom: .85rem;
-}
+.input-wrap { position: relative; margin-bottom: .85rem; }
 .input-wrap .input-icon {
     position: absolute; left: .95rem; top: 50%; transform: translateY(-50%);
     color: var(--gray-text); font-size: .85rem; pointer-events: none;
@@ -161,9 +148,7 @@ html, body {
 }
 .error-message.show { display: block; animation: shake .45s ease; }
 
-/* ========================================
-   BUTTONS
-   ======================================== */
+/* ===== BUTTONS ===== */
 button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; transition: all .25s ease; }
 
 .btn-primary {
@@ -193,9 +178,7 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 .btn-large { padding: 1.3rem 2rem; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; gap: .8rem; }
 .btn-icon { font-size: 1.6rem; }
 
-/* ========================================
-   MAIN MENU
-   ======================================== */
+/* ===== MAIN MENU ===== */
 #main-menu {
     flex-direction: column;
     background: linear-gradient(150deg, var(--darker-bg) 0%, var(--dark-bg) 100%);
@@ -222,7 +205,8 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     font-size: 1.5rem; font-weight: 800; box-shadow: var(--glow);
 }
 .player-stats h3 { font-size: 1.05rem; font-weight: 700; }
-.trophies { display: flex; align-items: center; gap: .35rem; color: var(--accent); font-weight: 700; font-size: .95rem; }
+.stats-row { display: flex; gap: 1rem; margin-top: .3rem; }
+.trophies, .gold { display: flex; align-items: center; gap: .35rem; color: var(--accent); font-weight: 700; font-size: .95rem; }
 
 .menu-content {
     position: relative; z-index: 1;
@@ -257,16 +241,14 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 
 .menu-buttons { display: flex; flex-direction: column; gap: .75rem; width: 100%; max-width: 340px; }
 
-/* ========================================
-   SHOP SCREEN
-   ======================================== */
-#shop-screen {
+/* ===== SHOP ===== */
+#shop-screen, #chests-screen {
     flex-direction: column;
     background: linear-gradient(150deg, var(--darker-bg), var(--dark-bg));
     padding: 1rem;
 }
 
-.shop-container {
+.shop-container, .chests-container {
     width: 100%;
     max-width: 950px;
     height: 100%;
@@ -275,7 +257,7 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     margin: 0 auto;
 }
 
-.shop-header {
+.shop-header, .chests-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -302,7 +284,6 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     filter: drop-shadow(0 0 5px rgba(253, 203, 110, 0.5));
 }
 
-/* TABS */
 .shop-tabs {
     display: flex;
     gap: 0.6rem;
@@ -313,7 +294,7 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     flex: 1;
     padding: 1rem 1.1rem;
     background: rgba(255, 255, 255, 0.05);
-    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    border: 1.5px solid rgba(255,255,255,.12);
     border-radius: 12px;
     color: var(--gray-text);
     font-weight: 700;
@@ -325,18 +306,17 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 }
 
 .shop-tab:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255,255,255,.1);
     transform: translateY(-2px);
 }
 
 .shop-tab.active {
-    background: rgba(255, 51, 102, 0.18);
+    background: rgba(255,51,102,.18);
     border-color: var(--primary);
     color: var(--light-text);
-    box-shadow: 0 0 20px rgba(255, 51, 102, 0.25);
+    box-shadow: 0 0 20px rgba(255,51,102,.25);
 }
 
-/* CONTENT */
 .shop-content {
     display: none;
     flex: 1;
@@ -348,17 +328,16 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     display: block;
 }
 
-.shop-grid {
+.shop-grid, .chests-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
     gap: 1.1rem;
     padding-bottom: 1rem;
 }
 
-/* SHOP ITEM CARD */
 .shop-item {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255,255,255,.05);
+    border: 1.5px solid rgba(255,255,255,.12);
     border-radius: 18px;
     padding: 1.3rem 1.1rem;
     text-align: center;
@@ -369,14 +348,14 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 
 .shop-item:hover {
     transform: translateY(-6px);
-    border-color: rgba(255, 51, 102, 0.6);
-    background: rgba(255, 51, 102, 0.1);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255,51,102,.6);
+    background: rgba(255,51,102,.1);
+    box-shadow: 0 10px 25px rgba(0,0,0,.4);
 }
 
 .shop-item.owned {
-    border-color: rgba(46, 204, 113, 0.6);
-    background: rgba(46, 204, 113, 0.1);
+    border-color: rgba(46,204,113,.6);
+    background: rgba(46,204,113,.1);
 }
 
 .shop-item.owned::after {
@@ -394,7 +373,7 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     font-size: 0.95rem;
     font-weight: 900;
     color: white;
-    box-shadow: 0 0 12px rgba(46, 204, 113, 0.5);
+    box-shadow: 0 0 12px rgba(46,204,113,.5);
 }
 
 .shop-item.locked {
@@ -404,7 +383,7 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 .shop-item-icon {
     font-size: 3.2rem;
     margin-bottom: 0.6rem;
-    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.35));
+    filter: drop-shadow(0 0 10px rgba(255,255,255,.35));
 }
 
 .shop-item-name {
@@ -433,30 +412,30 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 }
 
 .shop-stat {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255,255,255,.12);
     padding: 0.25rem 0.6rem;
     border-radius: 7px;
     color: var(--light-text);
     font-weight: 600;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255,255,255,.08);
 }
 
-.shop-item-price {
+.shop-item-price, .chest-cost {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    background: rgba(253, 203, 110, 0.12);
+    background: rgba(253,203,110,.12);
     padding: 0.6rem 0.9rem;
     border-radius: 11px;
     font-weight: 800;
     color: var(--accent);
     margin-bottom: 0.7rem;
-    border: 1px solid rgba(253, 203, 110, 0.25);
+    border: 1px solid rgba(253,203,110,.25);
     font-size: 1.05rem;
 }
 
-.shop-item-btn {
+.shop-item-btn, .chest-open-btn {
     width: 100%;
     padding: 0.7rem;
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
@@ -471,17 +450,17 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     letter-spacing: 0.03em;
 }
 
-.shop-item-btn:hover {
+.shop-item-btn:hover, .chest-open-btn:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 18px rgba(255, 51, 102, 0.45);
+    box-shadow: 0 8px 18px rgba(255,51,102,.45);
 }
 
 .shop-item-btn:active {
     transform: translateY(-1px);
 }
 
-.shop-item-btn:disabled {
-    background: rgba(255, 255, 255, 0.12);
+.shop-item-btn:disabled, .chest-open-btn:disabled {
+    background: rgba(255,255,255,.12);
     color: var(--gray-text);
     cursor: not-allowed;
     transform: none;
@@ -495,7 +474,7 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     pointer-events: none;
 }
 
-.shop-close-btn {
+.shop-close-btn, .chests-close-btn {
     margin-top: 1.2rem;
     width: 100%;
     max-width: 320px;
@@ -516,9 +495,266 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     transform: scale(1.15);
 }
 
-/* ========================================
-   MATCHMAKING
-   ======================================== */
+/* ===== CHESTS ===== */
+.chests-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem 0.5rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.chest-card {
+    background: rgba(255,255,255,.05);
+    border: 2px solid rgba(255,255,255,.12);
+    border-radius: 20px;
+    padding: 1.8rem 1.4rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.chest-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, var(--chest-glow), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.chest-card:hover::before {
+    opacity: 0.15;
+}
+
+.chest-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: var(--chest-color);
+    box-shadow: 0 12px 30px rgba(0,0,0,.4), 0 0 25px var(--chest-glow);
+}
+
+.chest-card.locked {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.chest-card.locked:hover {
+    transform: none;
+}
+
+.chest-card.free-ready {
+    animation: pulseChest 2s ease infinite;
+}
+
+.chest-icon-display {
+    font-size: 4.5rem;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 0 15px var(--chest-glow));
+    animation: float 3s ease-in-out infinite;
+}
+
+.chest-name {
+    font-weight: 800;
+    font-size: 1.2rem;
+    margin-bottom: 0.6rem;
+    color: var(--chest-color);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.chest-rewards-preview {
+    font-size: 0.8rem;
+    color: var(--gray-text);
+    margin-bottom: 1rem;
+    line-height: 1.4;
+}
+
+.chest-timer {
+    font-size: 0.85rem;
+    color: var(--primary);
+    font-weight: 700;
+    background: rgba(255,51,102,.1);
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+/* Chest colors */
+.chest-basic {
+    --chest-color: #95a5a6;
+    --chest-dark: #7f8c8d;
+    --chest-glow: rgba(149,165,166,0.3);
+}
+
+.chest-silver {
+    --chest-color: #3498db;
+    --chest-dark: #2980b9;
+    --chest-glow: rgba(52,152,219,0.4);
+}
+
+.chest-gold {
+    --chest-color: #f39c12;
+    --chest-dark: #e67e22;
+    --chest-glow: rgba(243,156,18,0.5);
+}
+
+.chest-mega {
+    --chest-color: #9b59b6;
+    --chest-dark: #8e44ad;
+    --chest-glow: rgba(155,89,182,0.6);
+}
+
+/* ===== REWARD MODAL ===== */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.85);
+    backdrop-filter: blur(8px);
+}
+
+.modal-content {
+    position: relative;
+    z-index: 1001;
+    background: var(--card-bg);
+    backdrop-filter: blur(20px);
+    border: 2px solid rgba(255,51,102,.3);
+    border-radius: 24px;
+    padding: 3rem 2.5rem;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+
+.chest-opening-anim {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+}
+
+.chest-icon {
+    font-size: 8rem;
+    animation: chestShake 0.8s ease infinite;
+    filter: drop-shadow(0 0 30px rgba(255,51,102,.6));
+}
+
+.reward-result {
+    animation: fadeInUp 0.6s ease;
+}
+
+.reward-title {
+    font-family: 'Bungee', cursive;
+    font-size: 1.8rem;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, #ffd700, #ff9800);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.reward-item {
+    background: rgba(255,255,255,.05);
+    border: 2px solid var(--reward-rarity-color);
+    border-radius: 20px;
+    padding: 2rem 1.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    box-shadow: 0 0 30px var(--reward-rarity-glow);
+}
+
+.reward-rarity-badge {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--reward-rarity-color);
+    color: white;
+    padding: 0.4rem 1.2rem;
+    border-radius: 20px;
+    font-weight: 800;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    box-shadow: 0 4px 15px var(--reward-rarity-glow);
+}
+
+.reward-icon {
+    font-size: 5rem;
+    margin: 1rem 0;
+    filter: drop-shadow(0 0 20px var(--reward-rarity-glow));
+    animation: rewardFloat 2s ease-in-out infinite;
+}
+
+.reward-name {
+    font-weight: 800;
+    font-size: 1.4rem;
+    color: var(--light-text);
+    margin-bottom: 0.5rem;
+}
+
+.reward-status {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #2ECC71;
+}
+
+.reward-status.duplicate {
+    color: var(--accent);
+}
+
+.reward-gold {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    padding: 0.8rem;
+    background: rgba(253,203,110,.1);
+    border-radius: 12px;
+}
+
+#claim-reward-btn {
+    width: 100%;
+    padding: 1.1rem 2rem;
+    font-size: 1.1rem;
+}
+
+.rarity-common {
+    --reward-rarity-color: #95a5a6;
+    --reward-rarity-glow: rgba(149,165,166,0.4);
+}
+
+.rarity-rare {
+    --reward-rarity-color: #3498db;
+    --reward-rarity-glow: rgba(52,152,219,0.5);
+}
+
+.rarity-epic {
+    --reward-rarity-color: #9b59b6;
+    --reward-rarity-glow: rgba(155,89,182,0.6);
+}
+
+.rarity-legendary {
+    --reward-rarity-color: #f39c12;
+    --reward-rarity-glow: rgba(243,156,18,0.7);
+}
+
+/* ===== MATCHMAKING ===== */
 #matchmaking-screen {
     justify-content: center; align-items: center;
     background: linear-gradient(150deg, var(--darker-bg), var(--dark-bg));
@@ -546,9 +782,7 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 .matchmaking-text { color: var(--gray-text); font-size: 1.05rem; margin-bottom: .3rem; }
 .matchmaking-timer { color: var(--accent); font-weight: 700; font-size: 1rem; margin-bottom: 1.6rem; }
 
-/* ========================================
-   GAME SCREEN
-   ======================================== */
+/* ===== GAME SCREEN ===== */
 #game-screen { flex-direction: column; background: var(--darker-bg); }
 
 .game-hud {
@@ -609,9 +843,7 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     font-weight: 700; font-size: .73rem; color: rgba(255,255,255,.7);
 }
 
-/* ========================================
-   MOBILE CONTROLS
-   ======================================== */
+/* ===== MOBILE CONTROLS ===== */
 .mobile-controls {
     position: absolute; bottom: 1rem; left: 0; right: 0;
     display: none;
@@ -650,9 +882,7 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 .btn-spe { background: linear-gradient(145deg, var(--secondary), #4834df); }
 .btn-action.cooldown { filter: brightness(.45); pointer-events: none; }
 
-/* ========================================
-   RESULT SCREEN
-   ======================================== */
+/* ===== RESULT SCREEN ===== */
 #result-screen {
     justify-content: center; align-items: center;
     background: linear-gradient(150deg, var(--darker-bg), var(--dark-bg));
@@ -678,12 +908,10 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 }
 .stat-label { color: var(--gray-text); font-size: .95rem; }
 .stat-value { font-weight: 700; font-size: 1.1rem; }
-.trophy-change { color: var(--accent); }
+.trophy-change, .gold-change { color: var(--accent); }
 .trophy-change.negative { color: var(--hp-danger); }
 
-/* ========================================
-   LEADERBOARD
-   ======================================== */
+/* ===== LEADERBOARD ===== */
 #leaderboard-screen {
     flex-direction: column; align-items: center;
     background: linear-gradient(150deg, var(--darker-bg), var(--dark-bg));
@@ -715,400 +943,18 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 .lb-name { flex:1; font-weight: 600; font-size: .92rem; }
 .lb-trophies { color: var(--accent); font-weight: 700; font-size: .92rem; }
 
-/* ========================================
-   SCROLLBAR
-   ======================================== */
+/* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,51,102,.4); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
-/* ========================================
-   ANIMATIONS
-   ======================================== */
+/* ===== ANIMATIONS ===== */
 @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 @keyframes fadeInUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
 @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
 @keyframes pulseRing { 0% { transform:scale(.6); opacity:1; } 100% { transform:scale(1.8); opacity:0; } }
 @keyframes timerPulse { 0%,100%{opacity:1} 50%{opacity:.45} }
-
-/* ========================================
-   RESPONSIVE
-   ======================================== */
-@media (max-width: 600px) {
-    .game-title { font-size: 2rem !important; }
-    .hp-bar { width: 120px !important; height: 16px !important; }
-    .timer { font-size: 1.3rem !important; }
-    .key-hints { display: none; }
-    .hud-name { font-size: .74rem; }
-    
-    .shop-grid {
-        grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
-        gap: 0.9rem;
-    }
-    
-    .shop-item {
-        padding: 1.1rem 0.9rem;
-    }
-    
-    .shop-item-icon {
-        font-size: 2.7rem;
-    }
-    
-    .shop-header {
-        flex-direction: column;
-        gap: 0.8rem;
-        text-align: center;
-    }
-}
-
-/* ========================================
-   CHESTS SCREEN
-   ======================================== */
-#chests-screen {
-    flex-direction: column;
-    background: linear-gradient(150deg, var(--darker-bg), var(--dark-bg));
-    padding: 1rem;
-}
-
-.chests-container {
-    width: 100%;
-    max-width: 900px;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    margin: 0 auto;
-}
-
-.chests-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    padding: 0 0.5rem;
-}
-
-.chests-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-    padding: 1rem 0.5rem;
-    flex: 1;
-    overflow-y: auto;
-}
-
-.chest-card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.12);
-    border-radius: 20px;
-    padding: 1.8rem 1.4rem;
-    text-align: center;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-}
-
-.chest-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at center, var(--chest-glow), transparent 70%);
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-.chest-card:hover::before {
-    opacity: 0.15;
-}
-
-.chest-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    border-color: var(--chest-color);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 25px var(--chest-glow);
-}
-
-.chest-card.locked {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.chest-card.locked:hover {
-    transform: none;
-}
-
-.chest-card.free-ready {
-    animation: pulseChest 2s ease infinite;
-}
-
-.chest-icon-display {
-    font-size: 4.5rem;
-    margin-bottom: 1rem;
-    filter: drop-shadow(0 0 15px var(--chest-glow));
-    animation: float 3s ease-in-out infinite;
-}
-
-.chest-name {
-    font-weight: 800;
-    font-size: 1.2rem;
-    margin-bottom: 0.6rem;
-    color: var(--chest-color);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.chest-rewards-preview {
-    font-size: 0.8rem;
-    color: var(--gray-text);
-    margin-bottom: 1rem;
-    line-height: 1.4;
-}
-
-.chest-cost {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    background: rgba(253, 203, 110, 0.15);
-    padding: 0.7rem 1.1rem;
-    border-radius: 12px;
-    font-weight: 800;
-    color: var(--accent);
-    margin-bottom: 1rem;
-    border: 1px solid rgba(253, 203, 110, 0.3);
-}
-
-.chest-timer {
-    font-size: 0.85rem;
-    color: var(--primary);
-    font-weight: 700;
-    background: rgba(255, 51, 102, 0.1);
-    padding: 0.5rem 0.8rem;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-}
-
-.chest-open-btn {
-    width: 100%;
-    padding: 0.9rem;
-    background: linear-gradient(135deg, var(--chest-color), var(--chest-dark));
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-weight: 800;
-    font-size: 0.95rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.chest-open-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px var(--chest-glow);
-}
-
-.chest-open-btn:disabled {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--gray-text);
-    cursor: not-allowed;
-    transform: none;
-    opacity: 0.6;
-}
-
-.chests-close-btn {
-    margin-top: 1.5rem;
-    width: 100%;
-    max-width: 300px;
-    margin-left: auto;
-    margin-right: auto;
-    padding: 1rem 2rem;
-}
-
-/* ========================================
-   REWARD MODAL
-   ======================================== */
-.modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-}
-
-.modal.active {
-    display: flex;
-}
-
-.modal-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(8px);
-}
-
-.modal-content {
-    position: relative;
-    z-index: 1001;
-    background: var(--card-bg);
-    backdrop-filter: blur(20px);
-    border: 2px solid rgba(255, 51, 102, 0.3);
-    border-radius: 24px;
-    padding: 3rem 2.5rem;
-    max-width: 450px;
-    width: 90%;
-    text-align: center;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-.chest-opening-anim {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 200px;
-}
-
-.chest-icon {
-    font-size: 8rem;
-    animation: chestShake 0.8s ease infinite;
-    filter: drop-shadow(0 0 30px rgba(255, 51, 102, 0.6));
-}
-
-.reward-result {
-    animation: fadeInUp 0.6s ease;
-}
-
-.reward-title {
-    font-family: 'Bungee', cursive;
-    font-size: 1.8rem;
-    margin-bottom: 2rem;
-    background: linear-gradient(135deg, #ffd700, #ff9800);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.reward-item {
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid var(--reward-rarity-color);
-    border-radius: 20px;
-    padding: 2rem 1.5rem;
-    margin-bottom: 1.5rem;
-    position: relative;
-    box-shadow: 0 0 30px var(--reward-rarity-glow);
-}
-
-.reward-rarity-badge {
-    position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--reward-rarity-color);
-    color: white;
-    padding: 0.4rem 1.2rem;
-    border-radius: 20px;
-    font-weight: 800;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    box-shadow: 0 4px 15px var(--reward-rarity-glow);
-}
-
-.reward-icon {
-    font-size: 5rem;
-    margin: 1rem 0;
-    filter: drop-shadow(0 0 20px var(--reward-rarity-glow));
-    animation: rewardFloat 2s ease-in-out infinite;
-}
-
-.reward-name {
-    font-weight: 800;
-    font-size: 1.4rem;
-    color: var(--light-text);
-    margin-bottom: 0.5rem;
-}
-
-.reward-status {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #2ECC71;
-}
-
-.reward-status.duplicate {
-    color: var(--accent);
-}
-
-.reward-trophies,
-.reward-gold {
-    font-size: 1.3rem;
-    font-weight: 800;
-    color: var(--accent);
-    margin-bottom: 1.5rem;
-    padding: 0.8rem;
-    background: rgba(253, 203, 110, 0.1);
-    border-radius: 12px;
-}
-
-#claim-reward-btn {
-    width: 100%;
-    padding: 1.1rem 2rem;
-    font-size: 1.1rem;
-}
-
-/* ========================================
-   RARITY COLORS (CSS Variables dynamiques)
-   ======================================== */
-.rarity-common {
-    --reward-rarity-color: #95a5a6;
-    --reward-rarity-glow: rgba(149,165,166,0.4);
-}
-
-.rarity-rare {
-    --reward-rarity-color: #3498db;
-    --reward-rarity-glow: rgba(52,152,219,0.5);
-}
-
-.rarity-epic {
-    --reward-rarity-color: #9b59b6;
-    --reward-rarity-glow: rgba(155,89,182,0.6);
-}
-
-.rarity-legendary {
-    --reward-rarity-color: #f39c12;
-    --reward-rarity-glow: rgba(243,156,18,0.7);
-}
-
-/* ========================================
-   CHEST TYPE COLORS
-   ======================================== */
-.chest-basic {
-    --chest-color: #95a5a6;
-    --chest-dark: #7f8c8d;
-    --chest-glow: rgba(149,165,166,0.3);
-}
-
-.chest-silver {
-    --chest-color: #3498db;
-    --chest-dark: #2980b9;
-    --chest-glow: rgba(52,152,219,0.4);
-}
-
-.chest-gold {
-    --chest-color: #f39c12;
-    --chest-dark: #e67e22;
-    --chest-glow: rgba(243,156,18,0.5);
-}
-
-.chest-mega {
-    --chest-color: #9b59b6;
-    --chest-dark: #8e44ad;
-    --chest-glow: rgba(155,89,182,0.6);
-}
-
-/* ========================================
-   ANIMATIONS
-   ======================================== */
 @keyframes pulseChest {
     0%, 100% {
         transform: scale(1);
@@ -1119,45 +965,44 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
         box-shadow: 0 0 35px var(--chest-glow);
     }
 }
-
 @keyframes float {
-    0%, 100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-10px);
-    }
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
 }
-
 @keyframes chestShake {
     0%, 100% { transform: rotate(0deg); }
     25% { transform: rotate(-5deg) scale(1.05); }
     75% { transform: rotate(5deg) scale(1.05); }
 }
-
 @keyframes rewardFloat {
     0%, 100% { transform: translateY(0) scale(1); }
     50% { transform: translateY(-8px) scale(1.05); }
 }
 
-/* ========================================
-   RESPONSIVE
-   ======================================== */
+/* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
-    .chests-grid {
-        grid-template-columns: 1fr;
-        gap: 1.2rem;
+    .game-title { font-size: 2rem !important; }
+    .hp-bar { width: 120px !important; height: 16px !important; }
+    .timer { font-size: 1.3rem !important; }
+    .key-hints { display: none; }
+    .hud-name { font-size: .74rem; }
+    
+    .shop-grid, .chests-grid {
+        grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+        gap: 0.9rem;
     }
     
-    .chest-icon-display {
-        font-size: 3.5rem;
+    .shop-item, .chest-card {
+        padding: 1.1rem 0.9rem;
     }
     
-    .modal-content {
-        padding: 2rem 1.5rem;
+    .shop-item-icon, .chest-icon-display {
+        font-size: 2.7rem;
     }
     
-    .reward-icon {
-        font-size: 4rem;
+    .shop-header, .chests-header {
+        flex-direction: column;
+        gap: 0.8rem;
+        text-align: center;
     }
 }
