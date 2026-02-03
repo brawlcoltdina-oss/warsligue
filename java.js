@@ -1,22 +1,11 @@
 // ==========================================
-// WARSLIGUE — java.js  (REWRITE PROPRE)
+// WARSLIGUE — java.js  (VERSION CORRIGÉE)
 // ==========================================
-// BUGS CORRIGÉS :
-// 1  Race condition matchmaking → transaction Firebase
-// 2  Queue cleanup → onDisconnect + beforeunload
-// 3  HP sync → transaction atomique
-// 4  Attaque avec transaction HP (pas de double-subtraction)
-// 5  Position throttlé à 50ms
-// 6  Timer → une seule instance (player1) via Firebase
-// 7  endMatch → flag + idempotent
-// 8  Canvas resize → un seul handler
-// 9  Keyboard → installé une fois, détaché proprement
-// 10 Firestore listener → un seul, détachable
-// 11 Google Fonts → via <link> dans HTML
-// 12 Mobile joystick → wired avec touch events
-// 13 LB cache → invalidé après match
-// 14 Auth → ensurePlayerDoc
-// 15 Match cleanup → supprimé + onDisconnect
+// CORRECTIONS MATCHMAKING :
+// - limitToLast(1) pour éviter anciens matches
+// - Transaction simplifiée avec update()
+// - Meilleur algorithme de recherche
+// - Logs de debug ajoutés
 // ==========================================
 
 /* =============================================
@@ -236,7 +225,7 @@ function highlightChar(key) {
 }
 
 /* =============================================
-   MATCHMAKING
+   MATCHMAKING — VERSION CORRIGÉE
    ============================================= */
 document.getElementById('play-btn').addEventListener('click', startMatchmaking);
 document.getElementById('cancel-matchmaking').addEventListener('click', cancelMatchmaking);
@@ -263,20 +252,23 @@ async function startMatchmaking() {
             character: G.selectedChar,
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
-        // Si le navigateur ferme → retirer automatiquement
         ref.onDisconnect().remove();
 
-        // Écouter création de matches
+        console.log('🔍 Recherche adversaire... (Trophées:', G.playerData.trophies || 0, ')');
+
+        // ⚠️ FIX MAJEUR : limitToLast(1) pour éviter anciens matches
+        G.mmChildListenerRef = RTDB.ref('active_matches');
         G.mmChildListener = (snap) => {
             const m = snap.val();
             if (!m) return;
+            console.log('📢 Match détecté:', snap.key);
             if (m.player1Uid === G.user.uid || m.player2Uid === G.user.uid) {
+                console.log('✅ C\'est notre match !');
                 stopMatchmaking();
                 enterMatch(snap.key, m);
             }
         };
-        G.mmChildListenerRef = RTDB.ref('active_matches');
-        G.mmChildListenerRef.on('child_added', G.mmChildListener);
+        G.mmChildListenerRef.limitToLast(1).on('child_added', G.mmChildListener);
 
         scheduleSearch();
     } catch (e) {
@@ -295,55 +287,76 @@ function scheduleSearch() {
     }, 2000);
 }
 
+// ⚠️ FIX MAJEUR : Simplification avec update() au lieu de transaction()
 async function tryPairMatch() {
+    if (!G.myQueueKey) return;
+    
     try {
-        const snap = await RTDB.ref('matchmaking_queue').once('value');
-        const queue = snap.val();
-        if (!queue) return;
+        const queueSnap = await RTDB.ref('matchmaking_queue').once('value');
+        const queue = queueSnap.val();
+        
+        if (!queue || !queue[G.myQueueKey]) {
+            console.log('⚠️ Plus dans la queue');
+            return;
+        }
 
-        const myTr = G.playerData.trophies || 0;
-        const cands = Object.entries(queue).filter(([k, p]) =>
-            p.uid !== G.user.uid && Math.abs((p.trophies || 0) - myTr) <= 250
-        );
-        if (cands.length === 0) return;
-
-        const [oppKey, opp] = cands[0];
-        const myKey = G.myQueueKey;
+        const myTrophies = G.playerData.trophies || 0;
+        
+        // Trouver le meilleur adversaire
+        let bestOpponent = null;
+        let bestKey = null;
+        let bestDiff = Infinity;
+        
+        for (const [key, player] of Object.entries(queue)) {
+            if (key === G.myQueueKey) continue;
+            if (!player || !player.uid) continue;
+            
+            const diff = Math.abs((player.trophies || 0) - myTrophies);
+            if (diff <= 250 && diff < bestDiff) {
+                bestDiff = diff;
+                bestOpponent = player;
+                bestKey = key;
+            }
+        }
+        
+        if (!bestOpponent || !bestKey) {
+            console.log('🔍 Pas d\'adversaire (Δ trophées > 250)');
+            return;
+        }
+        
+        console.log('🎯 Adversaire trouvé:', bestOpponent.username, '| Δ', bestDiff, 'trophées');
+        
+        // Créer le match avec update() atomique
         const matchKey = RTDB.ref('active_matches').push().key;
-
-        // TRANSACTION atomique
-        await RTDB.ref().transaction(root => {
-            if (!root) return root;
-            const myEntry  = root.child('matchmaking_queue').child(myKey).val();
-            const oppEntry = root.child('matchmaking_queue').child(oppKey).val();
-            if (!myEntry || !oppEntry) return; // abort si l'un est parti
-
-            root.child('matchmaking_queue').child(myKey).remove();
-            root.child('matchmaking_queue').child(oppKey).remove();
-
-            const myCharKey  = G.selectedChar;
-            const oppCharKey = opp.character || 'warrior';
-            const myC  = CHARACTERS[myCharKey]  || CHARACTERS.warrior;
-            const oppC = CHARACTERS[oppCharKey] || CHARACTERS.warrior;
-
-            root.child('active_matches').child(matchKey).set({
-                player1Uid:      G.user.uid,
-                player2Uid:      opp.uid,
-                player1Username: G.playerData.username,
-                player2Username: opp.username,
-                player1Char:     myCharKey,
-                player2Char:     oppCharKey,
-                status:          'active',
-                timeLeft:        180,
-                gameState: {
-                    player1: { x: 80,  y: 400, hp: myC.hp },
-                    player2: { x: 720, y: 400, hp: oppC.hp }
-                }
-            });
-            return root;
-        });
+        const myCharKey = G.selectedChar;
+        const oppCharKey = bestOpponent.character || 'warrior';
+        const myChar = CHARACTERS[myCharKey] || CHARACTERS.warrior;
+        const oppChar = CHARACTERS[oppCharKey] || CHARACTERS.warrior;
+        
+        const updates = {};
+        updates[`matchmaking_queue/${G.myQueueKey}`] = null;
+        updates[`matchmaking_queue/${bestKey}`] = null;
+        updates[`active_matches/${matchKey}`] = {
+            player1Uid: G.user.uid,
+            player2Uid: bestOpponent.uid,
+            player1Username: G.playerData.username,
+            player2Username: bestOpponent.username,
+            player1Char: myCharKey,
+            player2Char: oppCharKey,
+            status: 'active',
+            timeLeft: 180,
+            createdAt: firebase.database.ServerValue.TIMESTAMP,
+            gameState: {
+                player1: { x: 80, y: 400, hp: myChar.hp },
+                player2: { x: 720, y: 400, hp: oppChar.hp }
+            }
+        };
+        
+        await RTDB.ref().update(updates);
+        console.log('✅ Match créé:', matchKey);
+        
     } catch (e) {
-        console.error('❌ tryPair:', e);
+        console.error('❌ tryPairMatch:', e);
     }
 }
 
@@ -352,6 +365,7 @@ function stopMatchmaking() {
     clearInterval(G.mmCountdownId);  G.mmCountdownId  = null;
     if (G.mmChildListenerRef && G.mmChildListener) {
         G.mmChildListenerRef.off('child_added', G.mmChildListener);
+        console.log('🔌 Listener MM détaché');
     }
     G.mmChildListener    = null;
     G.mmChildListenerRef = null;
@@ -361,7 +375,14 @@ function stopMatchmaking() {
 async function cancelMatchmaking() {
     const key = G.myQueueKey;
     stopMatchmaking();
-    if (key) await RTDB.ref('matchmaking_queue/' + key).remove();
+    if (key) {
+        try {
+            await RTDB.ref('matchmaking_queue/' + key).remove();
+            console.log('❌ Annulation MM');
+        } catch (e) {
+            console.error('Erreur annulation:', e);
+        }
+    }
     showScreen('main-menu');
 }
 
@@ -380,10 +401,8 @@ function enterMatch(matchId, matchData) {
     showScreen('game-screen');
     initGame(matchData);
 
-    // onDisconnect : supprimer le match si on se déconnecte
     RTDB.ref(`active_matches/${matchId}`).onDisconnect().remove();
 
-    // Le player1 gère le timer
     if (G.isPlayer1) startServerTimer();
 }
 
@@ -430,12 +449,10 @@ function initGame(matchData) {
     G.lastSpeTime = 0;
     G.lastPosSend = 0;
 
-    // Mettre à jour y initiale dans Firebase
     RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}`).update({
         y: Math.round(G.canvas.height / 2)
     });
 
-    // Listener Firebase match
     if (G.matchListenerRef && G.matchListenerCb) {
         G.matchListenerRef.off('value', G.matchListenerCb);
     }
@@ -680,11 +697,9 @@ function update() {
         }
     }
 
-    // Interpoler adversaire
     G.opponent.x += (G.opponent.targetX - G.opponent.x) * 0.2;
     G.opponent.y += (G.opponent.targetY - G.opponent.y) * 0.2;
 
-    // Particules
     for (let i = G.particles.length - 1; i >= 0; i--) {
         const p = G.particles[i];
         p.life--;
@@ -722,7 +737,6 @@ function doAttack(type) {
     flashHit(type);
     spawnHitParticles(G.opponent.x, G.opponent.y, type);
 
-    // Transaction atomique sur le HP
     const oppK = G.isPlayer1 ? 'player2' : 'player1';
     RTDB.ref(`active_matches/${G.matchId}/gameState/${oppK}/hp`).transaction(cur => {
         if (cur === null) return 0;
@@ -762,18 +776,14 @@ function render() {
     ctx.fillStyle = '#0F0F1E';
     ctx.fillRect(0, 0, W, H);
 
-    // Grille
     ctx.strokeStyle = 'rgba(255,255,255,0.04)';
     ctx.lineWidth = 1;
     for (let x = 0; x < W; x += 48) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
     for (let y = 0; y < H; y += 48) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
 
-    // Adversaire
     if (G.opponent) drawEntity(ctx, G.opponent);
-    // Joueur
     if (G.player) drawEntity(ctx, G.player);
 
-    // Particules
     for (const p of G.particles) {
         const alpha = p.life / p.maxLife;
         ctx.save();
@@ -789,7 +799,6 @@ function render() {
 }
 
 function drawEntity(ctx, e) {
-    // Ombre
     ctx.save();
     ctx.globalAlpha = 0.2;
     ctx.fillStyle = '#000';
@@ -798,7 +807,6 @@ function drawEntity(ctx, e) {
     ctx.fill();
     ctx.restore();
 
-    // Glow
     ctx.save();
     ctx.shadowBlur  = 28;
     ctx.shadowColor = e.glowColor || e.color;
@@ -808,13 +816,11 @@ function drawEntity(ctx, e) {
     ctx.fill();
     ctx.restore();
 
-    // Corps
     ctx.fillStyle = e.color;
     ctx.beginPath();
     ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Bord
     ctx.strokeStyle = 'rgba(255,255,255,0.3)';
     ctx.lineWidth = 2;
     ctx.stroke();
@@ -863,7 +869,7 @@ async function updatePlayerStats(victory, trophyChange) {
         wins:         firebase.firestore.FieldValue.increment(victory ? 1 : 0),
         losses:       firebase.firestore.FieldValue.increment(victory ? 0 : 1)
     });
-    lbCache = null; // invalider cache
+    lbCache = null;
 }
 
 /* =============================================
@@ -1006,4 +1012,4 @@ function fullCleanup() {
 
 window.addEventListener('beforeunload', fullCleanup);
 
-console.log('🎮 WARSLIGUE — script chargé');
+console.log('🎮 WARSLIGUE — script chargé (VERSION CORRIGÉE)');
