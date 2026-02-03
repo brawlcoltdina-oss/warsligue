@@ -1,0 +1,48 @@
+<!-- ===================== SCREEN BOUTIQUE À AJOUTER AVANT </body> ===================== -->
+<!-- À insérer après #leaderboard-screen et avant les scripts Firebase -->
+
+<!-- ===================== SHOP SCREEN ===================== -->
+<div id="shop-screen" class="screen">
+    <div class="shop-container">
+        <div class="shop-header">
+            <h2 class="screen-title">🛒 Boutique</h2>
+            <div class="player-coins">
+                <span class="coin-icon">🏆</span>
+                <span id="shop-trophies">0</span>
+            </div>
+        </div>
+
+        <!-- TABS -->
+        <div class="shop-tabs">
+            <button class="shop-tab active" data-tab="characters">Personnages</button>
+            <button class="shop-tab" data-tab="skins">Skins</button>
+        </div>
+
+        <!-- CHARACTERS TAB -->
+        <div class="shop-content active" id="shop-tab-characters">
+            <div class="shop-grid" id="characters-grid"></div>
+        </div>
+
+        <!-- SKINS TAB -->
+        <div class="shop-content" id="shop-tab-skins">
+            <div class="shop-grid" id="skins-grid"></div>
+        </div>
+
+        <button id="close-shop" class="btn-secondary shop-close-btn">Retour</button>
+    </div>
+</div>
+
+<!-- ===================== DANS VOTRE MENU PRINCIPAL ===================== -->
+<!-- Remplacer la section .menu-buttons par : -->
+
+<div class="menu-buttons">
+    <button id="play-btn" class="btn-large btn-primary">
+        <span class="btn-icon">⚔️</span><span>JOUER</span>
+    </button>
+    <button id="shop-btn" class="btn-large btn-secondary">
+        <span class="btn-icon">🛒</span><span>BOUTIQUE</span>
+    </button>
+    <button id="leaderboard-btn" class="btn-large btn-secondary">
+        <span class="btn-icon">🏅</span><span>CLASSEMENT</span>
+    </button>
+</div>

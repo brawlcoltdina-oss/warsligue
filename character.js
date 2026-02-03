@@ -1,5 +1,5 @@
 // ==========================================
-// WARSLIGUE — CHARACTERS DATA
+// WARSLIGUE — CHARACTERS & SHOP DATA
 // Chargé avant java.js
 // ==========================================
 
@@ -13,11 +13,13 @@ const CHARACTERS = {
         attackRange: 90,
         specialDamage: 22,
         specialRange: 140,
-        attackCooldown: 900,    // ms
-        specialCooldown: 4500,  // ms
+        attackCooldown: 900,
+        specialCooldown: 4500,
         color: '#FF3366',
         glowColor: 'rgba(255,51,102,0.6)',
-        radius: 24
+        radius: 24,
+        locked: false,
+        price: 0
     },
     assassin: {
         name: "Assassin",
@@ -32,7 +34,9 @@ const CHARACTERS = {
         specialCooldown: 3800,
         color: '#9B59B6',
         glowColor: 'rgba(155,89,182,0.6)',
-        radius: 20
+        radius: 20,
+        locked: false,
+        price: 0
     },
     mage: {
         name: "Mage",
@@ -40,13 +44,148 @@ const CHARACTERS = {
         hp: 80,
         speed: 4,
         attackDamage: 12,
-        attackRange: 130,       // portée plus longue
+        attackRange: 130,
         specialDamage: 26,
         specialRange: 180,
         attackCooldown: 1100,
         specialCooldown: 5200,
         color: '#F39C12',
         glowColor: 'rgba(243,156,18,0.6)',
-        radius: 22
+        radius: 22,
+        locked: false,
+        price: 0
+    },
+    // NOUVEAUX PERSONNAGES DÉBLOQUABLES
+    tank: {
+        name: "Tank",
+        emoji: "🛡️",
+        hp: 150,
+        speed: 3,
+        attackDamage: 8,
+        attackRange: 70,
+        specialDamage: 18,
+        specialRange: 100,
+        attackCooldown: 1200,
+        specialCooldown: 6000,
+        color: '#3498DB',
+        glowColor: 'rgba(52,152,219,0.6)',
+        radius: 28,
+        locked: true,
+        price: 500,
+        description: "Résistant mais lent"
+    },
+    ninja: {
+        name: "Ninja",
+        emoji: "🥷",
+        hp: 65,
+        speed: 10,
+        attackDamage: 16,
+        attackRange: 60,
+        specialDamage: 32,
+        specialRange: 90,
+        attackCooldown: 500,
+        specialCooldown: 3200,
+        color: '#2C3E50',
+        glowColor: 'rgba(44,62,80,0.6)',
+        radius: 18,
+        locked: true,
+        price: 750,
+        description: "Ultra rapide et mortel"
+    },
+    necromancer: {
+        name: "Necromancer",
+        emoji: "💀",
+        hp: 70,
+        speed: 4,
+        attackDamage: 15,
+        attackRange: 150,
+        specialDamage: 30,
+        specialRange: 200,
+        attackCooldown: 1300,
+        specialCooldown: 5500,
+        color: '#8E44AD',
+        glowColor: 'rgba(142,68,173,0.6)',
+        radius: 23,
+        locked: true,
+        price: 1000,
+        description: "Maître de la magie noire"
+    },
+    paladin: {
+        name: "Paladin",
+        emoji: "⚜️",
+        hp: 120,
+        speed: 5,
+        attackDamage: 12,
+        attackRange: 85,
+        specialDamage: 24,
+        specialRange: 130,
+        attackCooldown: 950,
+        specialCooldown: 4800,
+        color: '#F1C40F',
+        glowColor: 'rgba(241,196,15,0.6)',
+        radius: 25,
+        locked: true,
+        price: 1200,
+        description: "Équilibré et puissant"
     }
 };
+
+// SKINS DÉBLOQUABLES (change juste la couleur)
+const SKINS = {
+    warrior_red: {
+        name: "Warrior Crimson",
+        characterBase: 'warrior',
+        emoji: "⚔️",
+        color: '#E74C3C',
+        glowColor: 'rgba(231,76,60,0.6)',
+        locked: true,
+        price: 300
+    },
+    warrior_blue: {
+        name: "Warrior Ice",
+        characterBase: 'warrior',
+        emoji: "⚔️",
+        color: '#3498DB',
+        glowColor: 'rgba(52,152,219,0.6)',
+        locked: true,
+        price: 300
+    },
+    assassin_shadow: {
+        name: "Assassin Shadow",
+        characterBase: 'assassin',
+        emoji: "🗡️",
+        color: '#2C3E50',
+        glowColor: 'rgba(44,62,80,0.6)',
+        locked: true,
+        price: 400
+    },
+    assassin_gold: {
+        name: "Assassin Gold",
+        characterBase: 'assassin',
+        emoji: "🗡️",
+        color: '#F39C12',
+        glowColor: 'rgba(243,156,18,0.6)',
+        locked: true,
+        price: 400
+    },
+    mage_emerald: {
+        name: "Mage Emerald",
+        characterBase: 'mage',
+        emoji: "🔮",
+        color: '#2ECC71',
+        glowColor: 'rgba(46,204,113,0.6)',
+        locked: true,
+        price: 350
+    },
+    mage_purple: {
+        name: "Mage Purple",
+        characterBase: 'mage',
+        emoji: "🔮",
+        color: '#9B59B6',
+        glowColor: 'rgba(155,89,182,0.6)',
+        locked: true,
+        price: 350
+    }
+};
+
+console.log('✅ CHARACTERS & SKINS chargés');
