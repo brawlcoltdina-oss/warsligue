@@ -2,167 +2,240 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Warsligue - Bataille en Ligne</title>
+    <!-- Google Fonts FIRST, avant tout autre CSS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Bungee&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Écran de chargement -->
-    <div id="loading-screen" class="screen active">
-        <div class="logo-container">
-            <h1 class="game-title">WARSLIGUE</h1>
-            <div class="loading-spinner"></div>
-            <p class="loading-text">Chargement...</p>
+
+<!-- ===================== LOADING SCREEN ===================== -->
+<div id="loading-screen" class="screen active">
+    <div class="logo-container">
+        <h1 class="game-title">WARSLIGUE</h1>
+        <div class="loading-bar-wrap">
+            <div class="loading-bar" id="loading-bar"></div>
         </div>
+        <p class="loading-text" id="loading-text">Initialisation...</p>
     </div>
+</div>
 
-    <!-- Écran de connexion/création de compte -->
-    <div id="auth-screen" class="screen">
-        <div class="auth-container">
-            <h1 class="game-title">WARSLIGUE</h1>
-            
-            <div id="login-form" class="auth-form active">
-                <h2>Connexion</h2>
-                <input type="email" id="login-email" placeholder="Email" required>
-                <input type="password" id="login-password" placeholder="Mot de passe" required>
-                <button id="login-btn" class="btn-primary">Se connecter</button>
-                <p class="auth-switch">Pas de compte ? <span id="show-register">Créer un compte</span></p>
+<!-- ===================== AUTH SCREEN ===================== -->
+<div id="auth-screen" class="screen">
+    <div class="auth-bg-particles"></div>
+    <div class="auth-container">
+        <h1 class="game-title">WARSLIGUE</h1>
+
+        <div id="login-form" class="auth-form active">
+            <h2>Connexion</h2>
+            <div class="input-wrap">
+                <span class="input-icon">✉</span>
+                <input type="email" id="login-email" placeholder="Email" autocomplete="off">
             </div>
-
-            <div id="register-form" class="auth-form">
-                <h2>Créer un compte</h2>
-                <input type="text" id="register-username" placeholder="Nom d'utilisateur" required maxlength="15">
-                <input type="email" id="register-email" placeholder="Email" required>
-                <input type="password" id="register-password" placeholder="Mot de passe (min 6 caractères)" required>
-                <button id="register-btn" class="btn-primary">Créer</button>
-                <p class="auth-switch">Déjà un compte ? <span id="show-login">Se connecter</span></p>
+            <div class="input-wrap">
+                <span class="input-icon">●●●</span>
+                <input type="password" id="login-password" placeholder="Mot de passe">
             </div>
-
-            <div class="error-message" id="auth-error"></div>
+            <button id="login-btn" class="btn-primary">Se connecter</button>
+            <p class="auth-switch">Pas de compte ? <span id="show-register">Créer un compte</span></p>
         </div>
+
+        <div id="register-form" class="auth-form">
+            <h2>Créer un compte</h2>
+            <div class="input-wrap">
+                <span class="input-icon">👤</span>
+                <input type="text" id="register-username" placeholder="Pseudo (3-15 car.)" maxlength="15" autocomplete="off">
+            </div>
+            <div class="input-wrap">
+                <span class="input-icon">✉</span>
+                <input type="email" id="register-email" placeholder="Email" autocomplete="off">
+            </div>
+            <div class="input-wrap">
+                <span class="input-icon">●●●</span>
+                <input type="password" id="register-password" placeholder="Mot de passe (min 6 car.)" autocomplete="off">
+            </div>
+            <button id="register-btn" class="btn-primary">Créer un compte</button>
+            <p class="auth-switch">Déjà un compte ? <span id="show-login">Se connecter</span></p>
+        </div>
+
+        <div class="error-message" id="auth-error"></div>
     </div>
+</div>
 
-    <!-- Menu principal -->
-    <div id="main-menu" class="screen">
-        <div class="menu-header">
-            <div class="player-info">
-                <div class="player-avatar" id="player-avatar"></div>
-                <div class="player-stats">
-                    <h3 id="player-name">Joueur</h3>
-                    <div class="trophies">
-                        <span class="trophy-icon">🏆</span>
-                        <span id="player-trophies">0</span>
-                    </div>
-                </div>
-            </div>
-            <button id="logout-btn" class="btn-secondary">Déconnexion</button>
-        </div>
+<!-- ===================== MAIN MENU ===================== -->
+<div id="main-menu" class="screen">
+    <div class="menu-bg-anim"></div>
 
-        <div class="menu-content">
-            <h1 class="game-title">WARSLIGUE</h1>
-            
-            <div class="menu-buttons">
-                <button id="play-btn" class="btn-large btn-primary">
-                    <span class="btn-icon">⚔️</span>
-                    <span>JOUER</span>
-                </button>
-                <button id="leaderboard-btn" class="btn-large btn-secondary">
-                    <span class="btn-icon">🏅</span>
-                    <span>CLASSEMENT</span>
-                </button>
-                <button id="profile-btn" class="btn-large btn-secondary">
-                    <span class="btn-icon">👤</span>
-                    <span>PROFIL</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Écran de recherche de match -->
-    <div id="matchmaking-screen" class="screen">
-        <div class="matchmaking-container">
-            <h2>Recherche d'adversaire...</h2>
-            <div class="matchmaking-animation">
-                <div class="pulse-circle"></div>
-                <div class="pulse-circle delay-1"></div>
-                <div class="pulse-circle delay-2"></div>
-            </div>
-            <p class="matchmaking-text">Trophées: <span id="mm-trophies">0</span></p>
-            <button id="cancel-matchmaking" class="btn-secondary">Annuler</button>
-        </div>
-    </div>
-
-    <!-- Écran de jeu -->
-    <div id="game-screen" class="screen">
-        <div class="game-hud">
-            <div class="hud-top">
-                <div class="player-hud">
-                    <div class="hp-bar">
-                        <div class="hp-fill" id="player-hp"></div>
-                    </div>
-                    <span id="player-game-name">Vous</span>
-                </div>
-                <div class="timer" id="game-timer">3:00</div>
-                <div class="opponent-hud">
-                    <span id="opponent-game-name">Adversaire</span>
-                    <div class="hp-bar">
-                        <div class="hp-fill" id="opponent-hp"></div>
-                    </div>
+    <div class="menu-header">
+        <div class="player-info">
+            <div class="player-avatar" id="player-avatar">?</div>
+            <div class="player-stats">
+                <h3 id="player-name">Joueur</h3>
+                <div class="trophies">
+                    <span class="trophy-icon">🏆</span>
+                    <span id="player-trophies">0</span>
                 </div>
             </div>
         </div>
+        <button id="logout-btn" class="btn-secondary">Déco</button>
+    </div>
 
-        <canvas id="game-canvas"></canvas>
+    <div class="menu-content">
+        <h1 class="game-title">WARSLIGUE</h1>
+        <p class="menu-subtitle">Choisissez votre personnage et combattez !</p>
 
-        <div class="game-controls">
-            <div class="joystick-container">
-                <div id="joystick" class="joystick">
-                    <div class="joystick-knob"></div>
+        <!-- CHARACTER SELECTION -->
+        <div class="character-selector" id="character-selector">
+            <div class="char-card active" data-char="warrior" onclick="selectCharacter('warrior')">
+                <div class="char-icon">⚔️</div>
+                <div class="char-name">Warrior</div>
+                <div class="char-stats">
+                    <span class="stat-hp">❤️ 100</span>
+                    <span class="stat-spd">💨 5</span>
                 </div>
             </div>
-            <div class="action-buttons">
-                <button id="attack-btn" class="btn-attack">⚡</button>
-                <button id="special-btn" class="btn-special">💥</button>
+            <div class="char-card" data-char="assassin" onclick="selectCharacter('assassin')">
+                <div class="char-icon">🗡️</div>
+                <div class="char-name">Assassin</div>
+                <div class="char-stats">
+                    <span class="stat-hp">❤️ 75</span>
+                    <span class="stat-spd">💨 8</span>
+                </div>
+            </div>
+            <div class="char-card" data-char="mage" onclick="selectCharacter('mage')">
+                <div class="char-icon">🔮</div>
+                <div class="char-name">Mage</div>
+                <div class="char-stats">
+                    <span class="stat-hp">❤️ 80</span>
+                    <span class="stat-spd">💨 4</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-buttons">
+            <button id="play-btn" class="btn-large btn-primary">
+                <span class="btn-icon">⚔️</span><span>JOUER</span>
+            </button>
+            <button id="leaderboard-btn" class="btn-large btn-secondary">
+                <span class="btn-icon">🏅</span><span>CLASSEMENT</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== MATCHMAKING SCREEN ===================== -->
+<div id="matchmaking-screen" class="screen">
+    <div class="matchmaking-container">
+        <h2>Recherche d'adversaire...</h2>
+        <div class="matchmaking-animation">
+            <div class="pulse-ring"></div>
+            <div class="pulse-ring delay-1"></div>
+            <div class="pulse-ring delay-2"></div>
+            <div class="pulse-core">🔍</div>
+        </div>
+        <p class="matchmaking-text">Trophées : <span id="mm-trophies">0</span></p>
+        <p class="matchmaking-timer" id="mm-timer">0s</p>
+        <button id="cancel-matchmaking" class="btn-secondary">Annuler</button>
+    </div>
+</div>
+
+<!-- ===================== GAME SCREEN ===================== -->
+<div id="game-screen" class="screen">
+    <!-- HUD -->
+    <div class="game-hud">
+        <div class="hud-player">
+            <span class="hud-name" id="player-game-name">Vous</span>
+            <div class="hp-bar">
+                <div class="hp-fill" id="player-hp" style="width:100%"></div>
+                <span class="hp-text" id="player-hp-text">100</span>
+            </div>
+            <div class="cooldown-indicators">
+                <div class="cd-bar" id="cd-attack"><div class="cd-fill" id="cd-attack-fill"></div></div>
+                <div class="cd-bar cd-special" id="cd-special"><div class="cd-fill" id="cd-special-fill"></div></div>
+            </div>
+        </div>
+
+        <div class="hud-center">
+            <div class="timer-wrap">
+                <span class="timer-label">TEMPS</span>
+                <span class="timer" id="game-timer">3:00</span>
+            </div>
+        </div>
+
+        <div class="hud-opponent">
+            <span class="hud-name" id="opponent-game-name">Adversaire</span>
+            <div class="hp-bar">
+                <div class="hp-fill" id="opponent-hp" style="width:100%"></div>
+                <span class="hp-text" id="opponent-hp-text">100</span>
             </div>
         </div>
     </div>
 
-    <!-- Écran de fin de match -->
-    <div id="result-screen" class="screen">
-        <div class="result-container">
-            <h2 id="result-title" class="result-title">VICTOIRE!</h2>
-            <div class="result-stats">
-                <div class="stat-item">
-                    <span class="stat-label">Trophées</span>
-                    <span id="result-trophies" class="stat-value trophy-change">+8 🏆</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Total</span>
-                    <span id="result-total" class="stat-value">108 🏆</span>
-                </div>
+    <!-- CANVAS -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- MOBILE CONTROLS -->
+    <div class="mobile-controls">
+        <div class="joystick-zone" id="joystick-zone">
+            <div class="joystick-base">
+                <div class="joystick-knob" id="joystick-knob"></div>
             </div>
-            <button id="return-menu-btn" class="btn-primary">Retour au menu</button>
+        </div>
+        <div class="action-btns">
+            <button class="btn-action btn-atk" id="btn-atk">⚡<span class="btn-label">ATK</span></button>
+            <button class="btn-action btn-spe" id="btn-spe">💥<span class="btn-label">SPE</span></button>
         </div>
     </div>
 
-    <!-- Écran de classement -->
-    <div id="leaderboard-screen" class="screen">
-        <div class="leaderboard-container">
-            <h2>Classement Global</h2>
-            <div id="leaderboard-list" class="leaderboard-list">
-                <!-- Les entrées du classement seront ajoutées ici -->
-            </div>
-            <button id="close-leaderboard" class="btn-secondary">Retour</button>
-        </div>
+    <!-- KEY HINTS (desktop) -->
+    <div class="key-hints" id="key-hints">
+        <span class="key">Z</span><span class="key">Q</span><span class="key">S</span><span class="key">D</span> Bouger
+        &nbsp;&nbsp;
+        <span class="key">A</span> Attaque &nbsp;
+        <span class="key">E</span> Spécial
     </div>
+</div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    
-    <!-- Game Scripts -->
-    <script src="java.js"></script>
+<!-- ===================== RESULT SCREEN ===================== -->
+<div id="result-screen" class="screen">
+    <div class="result-particles"></div>
+    <div class="result-container">
+        <h2 id="result-title" class="result-title">VICTOIRE!</h2>
+        <div class="result-stats">
+            <div class="stat-row">
+                <span class="stat-label">Changement</span>
+                <span id="result-trophies" class="stat-value trophy-change">+10 🏆</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Total trophées</span>
+                <span id="result-total" class="stat-value">110 🏆</span>
+            </div>
+        </div>
+        <button id="return-menu-btn" class="btn-primary">Retour au menu</button>
+    </div>
+</div>
+
+<!-- ===================== LEADERBOARD SCREEN ===================== -->
+<div id="leaderboard-screen" class="screen">
+    <div class="leaderboard-container">
+        <h2 class="screen-title">🏅 Classement</h2>
+        <div id="leaderboard-list" class="leaderboard-list"></div>
+        <button id="close-leaderboard" class="btn-secondary">Retour</button>
+    </div>
+</div>
+
+<!-- ===================== FIREBASE SDK ===================== -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<!-- GAME SCRIPTS -->
+<script src="characters.js"></script>
+<script src="java.js"></script>
+
 </body>
 </html>

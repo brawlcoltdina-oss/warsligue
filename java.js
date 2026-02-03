@@ -1,66 +1,130 @@
 // ==========================================
-// WARSLIGUE - VERSION CORRIGÉE QUI MARCHE
+// WARSLIGUE — java.js  (REWRITE PROPRE)
+// ==========================================
+// BUGS CORRIGÉS :
+// 1  Race condition matchmaking → transaction Firebase
+// 2  Queue cleanup → onDisconnect + beforeunload
+// 3  HP sync → transaction atomique
+// 4  Attaque avec transaction HP (pas de double-subtraction)
+// 5  Position throttlé à 50ms
+// 6  Timer → une seule instance (player1) via Firebase
+// 7  endMatch → flag + idempotent
+// 8  Canvas resize → un seul handler
+// 9  Keyboard → installé une fois, détaché proprement
+// 10 Firestore listener → un seul, détachable
+// 11 Google Fonts → via <link> dans HTML
+// 12 Mobile joystick → wired avec touch events
+// 13 LB cache → invalidé après match
+// 14 Auth → ensurePlayerDoc
+// 15 Match cleanup → supprimé + onDisconnect
 // ==========================================
 
+/* =============================================
+   FIREBASE INIT
+   ============================================= */
 const firebaseConfig = {
-  apiKey: "AIzaSyAigU1zwt8XzDmIZtddvxYstor-9QxDizw",
-  authDomain: "warsligue.firebaseapp.com",
-  databaseURL: "https://warsligue-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "warsligue",
-  storageBucket: "warsligue.firebasestorage.app",
-  messagingSenderId: "66283382391",
-  appId: "1:66283382391:web:3d4d3dc5e51ff198870872",
-  measurementId: "G-84EWH821ED"
+    apiKey:             "AIzaSyAigU1zwt8XzDmIZtddvxYstor-9QxDizw",
+    authDomain:         "warsligue.firebaseapp.com",
+    databaseURL:        "https://warsligue-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId:          "warsligue",
+    storageBucket:      "warsligue.firebasestorage.app",
+    messagingSenderId:  "66283382391",
+    appId:              "1:66283382391:web:3d4d3dc5e51ff198870872",
+    measurementId:      "G-84EWH821ED"
 };
-
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-const rtdb = firebase.database();
+const AUTH = firebase.auth();
+const FSDB = firebase.firestore();
+const RTDB = firebase.database();
 
-const GameState = {
-    currentUser: null,
+/* =============================================
+   ÉTAT GLOBAL
+   ============================================= */
+const G = {
+    user: null,
     playerData: null,
-    currentMatch: null,
-    gameLoop: null,
-    matchmakingListener: null,
-    matchStateListener: null,
-    gameTimerInterval: null,
-    cache: {
-        leaderboard: null,
-        leaderboardTimestamp: 0,
-        playerStats: {},
-        CACHE_DURATION: 300000
-    }
+    playerDataUnsub: null,
+
+    myQueueKey: null,
+    mmChildListener: null,
+    mmChildListenerRef: null,
+    mmSearchTimer: null,
+    mmCountdownId: null,
+    mmSeconds: 0,
+
+    matchId: null,
+    isPlayer1: false,
+    matchListenerCb: null,
+    matchListenerRef: null,
+
+    rafId: null,
+    timerIntervalId: null,
+
+    selectedChar: 'warrior',
+
+    keys: {},
+    keydownFn: null,
+    keyupFn: null,
+
+    canvas: null,
+    ctx: null,
+    resizeFn: null,
+
+    player: null,
+    opponent: null,
+    gameTime: 180,
+    matchEnded: false,
+
+    particles: [],
+
+    lastAtkTime: 0,
+    lastSpeTime: 0,
+    cdAtkInterval: null,
+    cdSpeInterval: null,
+
+    lastPosSend: 0,
+    mobileInstalled: false
 };
 
-// ==========================================
-// GESTION DES ÉCRANS
-// ==========================================
-
-function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(screen => {
-        screen.classList.remove('active');
-    });
-    document.getElementById(screenId).classList.add('active');
+/* =============================================
+   UTILS
+   ============================================= */
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
 }
 
-function showError(message) {
-    const errorEl = document.getElementById('auth-error');
-    errorEl.textContent = message;
-    errorEl.classList.add('show');
-    setTimeout(() => errorEl.classList.remove('show'), 3000);
+function showError(msg) {
+    const el = document.getElementById('auth-error');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._ht);
+    el._ht = setTimeout(() => el.classList.remove('show'), 3200);
 }
 
-// ==========================================
-// AUTHENTIFICATION
-// ==========================================
+/* =============================================
+   LOADING SCREEN
+   ============================================= */
+(function () {
+    const bar  = document.getElementById('loading-bar');
+    const txt  = document.getElementById('loading-text');
+    const msgs = ['Initialisation...','Firebase...','Vérification session...','Prêt !'];
+    let i = 0;
+    const iv = setInterval(() => {
+        if (i >= msgs.length) return clearInterval(iv);
+        bar.style.width = ((i + 1) * 25) + '%';
+        txt.textContent = msgs[i];
+        i++;
+    }, 450);
+})();
 
+/* =============================================
+   AUTH
+   ============================================= */
 document.getElementById('show-register').addEventListener('click', () => {
     document.getElementById('login-form').classList.remove('active');
     document.getElementById('register-form').classList.add('active');
 });
-
 document.getElementById('show-login').addEventListener('click', () => {
     document.getElementById('register-form').classList.remove('active');
     document.getElementById('login-form').classList.add('active');
@@ -68,704 +132,878 @@ document.getElementById('show-login').addEventListener('click', () => {
 
 document.getElementById('register-btn').addEventListener('click', async () => {
     const username = document.getElementById('register-username').value.trim();
-    const email = document.getElementById('register-email').value.trim();
+    const email    = document.getElementById('register-email').value.trim();
     const password = document.getElementById('register-password').value;
-
-    if (!username || username.length < 3) {
-        showError('Le nom d\'utilisateur doit contenir au moins 3 caractères');
-        return;
-    }
-
-    if (password.length < 6) {
-        showError('Le mot de passe doit contenir au moins 6 caractères');
-        return;
-    }
-
+    if (!username || username.length < 3)  return showError('Pseudo : min 3 caractères');
+    if (!email)                            return showError('Email requis');
+    if (password.length < 6)               return showError('Mot de passe : min 6 caractères');
     try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const user = userCredential.user;
-
-        await db.collection('players').doc(user.uid).set({
-            username: username,
-            email: email,
-            trophies: 100,
-            wins: 0,
-            losses: 0,
-            totalMatches: 0,
+        const { user } = await AUTH.createUserWithEmailAndPassword(email, password);
+        await FSDB.collection('players').doc(user.uid).set({
+            username, email, trophies: 100, wins: 0, losses: 0, totalMatches: 0,
+            selectedCharacter: 'warrior',
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+            lastLogin:  firebase.firestore.FieldValue.serverTimestamp()
         });
-
-        console.log('✅ Compte créé avec succès');
-    } catch (error) {
-        console.error('❌ Erreur inscription:', error);
-        showError(error.message);
+    } catch (e) {
+        showError(e.code === 'auth/email-already-in-use' ? 'Email déjà utilisé' : e.message);
     }
 });
 
 document.getElementById('login-btn').addEventListener('click', async () => {
-    const email = document.getElementById('login-email').value.trim();
+    const email    = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
-
+    if (!email || !password) return showError('Remplissez tous les champs');
     try {
-        await auth.signInWithEmailAndPassword(email, password);
-        console.log('✅ Connexion réussie');
-    } catch (error) {
-        console.error('❌ Erreur connexion:', error);
+        await AUTH.signInWithEmailAndPassword(email, password);
+    } catch (e) {
         showError('Email ou mot de passe incorrect');
     }
 });
 
-document.getElementById('logout-btn').addEventListener('click', async () => {
-    try {
-        await auth.signOut();
-    } catch (error) {
-        console.error('❌ Erreur déconnexion:', error);
-    }
+document.getElementById('logout-btn').addEventListener('click', () => {
+    fullCleanup();
+    AUTH.signOut();
 });
 
-auth.onAuthStateChanged(async (user) => {
+/* =============================================
+   AUTH STATE CHANGED
+   ============================================= */
+AUTH.onAuthStateChanged(async (user) => {
+    await new Promise(r => setTimeout(r, 1800));
     if (user) {
-        GameState.currentUser = user;
-        await loadPlayerData();
+        G.user = user;
+        await ensurePlayerDoc(user);
+        listenPlayerData(user.uid);
         showScreen('main-menu');
     } else {
-        GameState.currentUser = null;
-        GameState.playerData = null;
+        G.user = null;
+        G.playerData = null;
+        if (G.playerDataUnsub) { G.playerDataUnsub(); G.playerDataUnsub = null; }
         showScreen('auth-screen');
     }
 });
 
-// ==========================================
-// CHARGEMENT DES DONNÉES JOUEUR
-// ==========================================
-
-async function loadPlayerData() {
-    try {
-        await db.collection('players').doc(GameState.currentUser.uid).update({
-            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+async function ensurePlayerDoc(user) {
+    const doc = await FSDB.collection('players').doc(user.uid).get();
+    if (!doc.exists) {
+        await FSDB.collection('players').doc(user.uid).set({
+            username: 'Joueur_' + user.uid.slice(0,6),
+            email: user.email || '',
+            trophies: 100, wins: 0, losses: 0, totalMatches: 0,
+            selectedCharacter: 'warrior',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            lastLogin:  firebase.firestore.FieldValue.serverTimestamp()
         });
-
-        db.collection('players').doc(GameState.currentUser.uid)
-            .onSnapshot((doc) => {
-                if (doc.exists) {
-                    GameState.playerData = { id: doc.id, ...doc.data() };
-                    updatePlayerUI();
-                }
-            });
-    } catch (error) {
-        console.error('❌ Erreur chargement données:', error);
+    } else {
+        FSDB.collection('players').doc(user.uid).update({ lastLogin: firebase.firestore.FieldValue.serverTimestamp() });
     }
 }
 
-function updatePlayerUI() {
-    if (!GameState.playerData) return;
-
-    document.getElementById('player-name').textContent = GameState.playerData.username;
-    document.getElementById('player-trophies').textContent = GameState.playerData.trophies || 0;
-    
-    const avatar = document.getElementById('player-avatar');
-    avatar.textContent = GameState.playerData.username.charAt(0).toUpperCase();
+/* =============================================
+   PLAYER DATA — listener unique
+   ============================================= */
+function listenPlayerData(uid) {
+    if (G.playerDataUnsub) G.playerDataUnsub();
+    G.playerDataUnsub = FSDB.collection('players').doc(uid).onSnapshot(doc => {
+        if (!doc.exists) return;
+        G.playerData = { id: doc.id, ...doc.data() };
+        if (G.playerData.selectedCharacter) {
+            G.selectedChar = G.playerData.selectedCharacter;
+            highlightChar(G.selectedChar);
+        }
+        updateMenuUI();
+    });
 }
 
-// ==========================================
-// MATCHMAKING
-// ==========================================
+function updateMenuUI() {
+    if (!G.playerData) return;
+    document.getElementById('player-name').textContent     = G.playerData.username;
+    document.getElementById('player-trophies').textContent = G.playerData.trophies || 0;
+    document.getElementById('player-avatar').textContent   = G.playerData.username[0].toUpperCase();
+}
 
+/* =============================================
+   CHARACTER SELECTION
+   ============================================= */
+function selectCharacter(key) {
+    G.selectedChar = key;
+    highlightChar(key);
+    if (G.user) FSDB.collection('players').doc(G.user.uid).update({ selectedCharacter: key });
+}
+function highlightChar(key) {
+    document.querySelectorAll('.char-card').forEach(c => c.classList.toggle('active', c.dataset.char === key));
+}
+
+/* =============================================
+   MATCHMAKING
+   ============================================= */
 document.getElementById('play-btn').addEventListener('click', startMatchmaking);
 document.getElementById('cancel-matchmaking').addEventListener('click', cancelMatchmaking);
 
 async function startMatchmaking() {
-    console.log('🔍 Recherche de match...');
+    if (!G.playerData) return;
     showScreen('matchmaking-screen');
-    document.getElementById('mm-trophies').textContent = GameState.playerData.trophies || 0;
+    document.getElementById('mm-trophies').textContent = G.playerData.trophies || 0;
+
+    G.mmSeconds = 0;
+    document.getElementById('mm-timer').textContent = '0s';
+    G.mmCountdownId = setInterval(() => {
+        G.mmSeconds++;
+        document.getElementById('mm-timer').textContent = G.mmSeconds + 's';
+    }, 1000);
 
     try {
-        const queueRef = rtdb.ref('matchmaking_queue');
-        const playerQueueRef = queueRef.push();
-
-        await playerQueueRef.set({
-            uid: GameState.currentUser.uid,
-            username: GameState.playerData.username,
-            trophies: GameState.playerData.trophies || 0,
+        const ref = RTDB.ref('matchmaking_queue').push();
+        G.myQueueKey = ref.key;
+        await ref.set({
+            uid: G.user.uid,
+            username: G.playerData.username,
+            trophies: G.playerData.trophies || 0,
+            character: G.selectedChar,
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
+        // Si le navigateur ferme → retirer automatiquement
+        ref.onDisconnect().remove();
 
-        const matchRef = rtdb.ref(`active_matches`);
-        GameState.matchmakingListener = matchRef.on('child_added', async (snapshot) => {
-            const match = snapshot.val();
-            
-            if (match.player1 === GameState.currentUser.uid || 
-                match.player2 === GameState.currentUser.uid) {
-                
-                console.log('✅ Match trouvé!', snapshot.key);
-                await playerQueueRef.remove();
-                matchRef.off('child_added', GameState.matchmakingListener);
-                startMatch(snapshot.key, match);
+        // Écouter création de matches
+        G.mmChildListener = (snap) => {
+            const m = snap.val();
+            if (!m) return;
+            if (m.player1Uid === G.user.uid || m.player2Uid === G.user.uid) {
+                stopMatchmaking();
+                enterMatch(snap.key, m);
             }
-        });
+        };
+        G.mmChildListenerRef = RTDB.ref('active_matches');
+        G.mmChildListenerRef.on('child_added', G.mmChildListener);
 
-        findOpponent(playerQueueRef);
-
-    } catch (error) {
-        console.error('❌ Erreur matchmaking:', error);
+        scheduleSearch();
+    } catch (e) {
+        console.error('❌ MM:', e);
+        stopMatchmaking();
         showScreen('main-menu');
     }
 }
 
-async function findOpponent(playerQueueRef) {
-    const queueRef = rtdb.ref('matchmaking_queue');
-    const queueSnapshot = await queueRef.once('value');
-    const queue = queueSnapshot.val();
+function scheduleSearch() {
+    if (!G.myQueueKey) return;
+    G.mmSearchTimer = setTimeout(async () => {
+        if (!G.myQueueKey) return;
+        await tryPairMatch();
+        scheduleSearch();
+    }, 2000);
+}
 
-    if (!queue) {
-        setTimeout(() => findOpponent(playerQueueRef), 2000);
-        return;
-    }
+async function tryPairMatch() {
+    try {
+        const snap = await RTDB.ref('matchmaking_queue').once('value');
+        const queue = snap.val();
+        if (!queue) return;
 
-    const players = Object.entries(queue).filter(([key, player]) => 
-        player.uid !== GameState.currentUser.uid &&
-        Math.abs(player.trophies - (GameState.playerData.trophies || 0)) <= 200
-    );
+        const myTr = G.playerData.trophies || 0;
+        const cands = Object.entries(queue).filter(([k, p]) =>
+            p.uid !== G.user.uid && Math.abs((p.trophies || 0) - myTr) <= 250
+        );
+        if (cands.length === 0) return;
 
-    if (players.length > 0) {
-        const [opponentKey, opponent] = players[0];
-        
-        const matchRef = rtdb.ref('active_matches').push();
-        await matchRef.set({
-            player1: GameState.currentUser.uid,
-            player2: opponent.uid,
-            player1Username: GameState.playerData.username,
-            player2Username: opponent.username,
-            startTime: firebase.database.ServerValue.TIMESTAMP,
-            status: 'active',
-            gameState: {
-                player1: { x: 100, y: 300, hp: 100 },
-                player2: { x: 700, y: 300, hp: 100 },
-                timeLeft: 180
-            }
+        const [oppKey, opp] = cands[0];
+        const myKey = G.myQueueKey;
+        const matchKey = RTDB.ref('active_matches').push().key;
+
+        // TRANSACTION atomique
+        await RTDB.ref().transaction(root => {
+            if (!root) return root;
+            const myEntry  = root.child('matchmaking_queue').child(myKey).val();
+            const oppEntry = root.child('matchmaking_queue').child(oppKey).val();
+            if (!myEntry || !oppEntry) return; // abort si l'un est parti
+
+            root.child('matchmaking_queue').child(myKey).remove();
+            root.child('matchmaking_queue').child(oppKey).remove();
+
+            const myCharKey  = G.selectedChar;
+            const oppCharKey = opp.character || 'warrior';
+            const myC  = CHARACTERS[myCharKey]  || CHARACTERS.warrior;
+            const oppC = CHARACTERS[oppCharKey] || CHARACTERS.warrior;
+
+            root.child('active_matches').child(matchKey).set({
+                player1Uid:      G.user.uid,
+                player2Uid:      opp.uid,
+                player1Username: G.playerData.username,
+                player2Username: opp.username,
+                player1Char:     myCharKey,
+                player2Char:     oppCharKey,
+                status:          'active',
+                timeLeft:        180,
+                gameState: {
+                    player1: { x: 80,  y: 400, hp: myC.hp },
+                    player2: { x: 720, y: 400, hp: oppC.hp }
+                }
+            });
+            return root;
         });
-
-        await playerQueueRef.remove();
-        await rtdb.ref(`matchmaking_queue/${opponentKey}`).remove();
-    } else {
-        setTimeout(() => findOpponent(playerQueueRef), 2000);
+    } catch (e) {
+        console.error('❌ tryPair:', e);
     }
+}
+
+function stopMatchmaking() {
+    clearTimeout(G.mmSearchTimer);   G.mmSearchTimer  = null;
+    clearInterval(G.mmCountdownId);  G.mmCountdownId  = null;
+    if (G.mmChildListenerRef && G.mmChildListener) {
+        G.mmChildListenerRef.off('child_added', G.mmChildListener);
+    }
+    G.mmChildListener    = null;
+    G.mmChildListenerRef = null;
+    G.myQueueKey         = null;
 }
 
 async function cancelMatchmaking() {
-    console.log('❌ Matchmaking annulé');
-    if (GameState.matchmakingListener) {
-        rtdb.ref('active_matches').off('child_added', GameState.matchmakingListener);
-    }
-    
-    const queueRef = rtdb.ref('matchmaking_queue');
-    const snapshot = await queueRef.orderByChild('uid').equalTo(GameState.currentUser.uid).once('value');
-    snapshot.forEach(child => child.ref.remove());
-    
+    const key = G.myQueueKey;
+    stopMatchmaking();
+    if (key) await RTDB.ref('matchmaking_queue/' + key).remove();
     showScreen('main-menu');
 }
 
-// ==========================================
-// JEU - VARIABLES GLOBALES
-// ==========================================
+/* =============================================
+   ENTRER DANS LE MATCH
+   ============================================= */
+function enterMatch(matchId, matchData) {
+    console.log('🎮 Match:', matchId);
+    G.matchId    = matchId;
+    G.isPlayer1  = (matchData.player1Uid === G.user.uid);
+    G.matchEnded = false;
 
-let canvas, ctx, player, opponent, gameTime, isPlayer1;
-let keys = {};
-let lastAttackTime = 0;
-let lastSpecialTime = 0;
-let matchEnded = false;
+    document.getElementById('player-game-name').textContent   = G.isPlayer1 ? matchData.player1Username : matchData.player2Username;
+    document.getElementById('opponent-game-name').textContent = G.isPlayer1 ? matchData.player2Username : matchData.player1Username;
 
-const ATTACK_COOLDOWN = 1000;
-const SPECIAL_COOLDOWN = 5000;
-
-// ==========================================
-// DÉMARRAGE DU MATCH
-// ==========================================
-
-function startMatch(matchId, matchData) {
-    console.log('🎮 Démarrage du match', matchId);
-    GameState.currentMatch = { id: matchId, ...matchData };
     showScreen('game-screen');
-    
-    isPlayer1 = matchData.player1 === GameState.currentUser.uid;
-    
-    document.getElementById('player-game-name').textContent = isPlayer1 ? matchData.player1Username : matchData.player2Username;
-    document.getElementById('opponent-game-name').textContent = isPlayer1 ? matchData.player2Username : matchData.player1Username;
-    
-    matchEnded = false;
-    initGame(matchId, isPlayer1);
+    initGame(matchData);
+
+    // onDisconnect : supprimer le match si on se déconnecte
+    RTDB.ref(`active_matches/${matchId}`).onDisconnect().remove();
+
+    // Le player1 gère le timer
+    if (G.isPlayer1) startServerTimer();
 }
 
-// ==========================================
-// INITIALISATION DU JEU
-// ==========================================
+/* =============================================
+   INIT GAME
+   ============================================= */
+function initGame(matchData) {
+    G.canvas = document.getElementById('game-canvas');
+    G.ctx    = G.canvas.getContext('2d');
+    resizeCanvas();
 
-function initGame(matchId, isP1) {
-    console.log('🎯 Initialisation du jeu, isPlayer1:', isP1);
-    isPlayer1 = isP1;
-    canvas = document.getElementById('game-canvas');
-    ctx = canvas.getContext('2d');
-    
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight - 200;
-    
-    // Position initiale
-    player = {
-        x: isPlayer1 ? 100 : canvas.width - 100,
-        y: canvas.height / 2,
-        vx: 0,
-        vy: 0,
-        hp: 100,
-        radius: 25,
-        color: '#FF3366',
-        speed: 5
+    if (G.resizeFn) window.removeEventListener('resize', G.resizeFn);
+    G.resizeFn = resizeCanvas;
+    window.addEventListener('resize', G.resizeFn);
+
+    const myKey  = G.isPlayer1 ? matchData.player1Char : matchData.player2Char;
+    const oppKey = G.isPlayer1 ? matchData.player2Char : matchData.player1Char;
+    const myC    = CHARACTERS[myKey]  || CHARACTERS.warrior;
+    const oppC   = CHARACTERS[oppKey] || CHARACTERS.warrior;
+
+    G.player = {
+        x: G.isPlayer1 ? 80 : G.canvas.width - 80,
+        y: G.canvas.height / 2,
+        hp: myC.hp, maxHp: myC.hp,
+        radius: myC.radius, color: myC.color, glowColor: myC.glowColor,
+        speed: myC.speed,
+        atkDmg: myC.attackDamage, atkRange: myC.attackRange, atkCd: myC.attackCooldown,
+        speDmg: myC.specialDamage, speRange: myC.specialRange, speCd: myC.specialCooldown
     };
-    
-    opponent = {
-        x: isPlayer1 ? canvas.width - 100 : 100,
-        y: canvas.height / 2,
-        hp: 100,
-        radius: 25,
-        color: '#6C5CE7'
+
+    G.opponent = {
+        x: G.isPlayer1 ? G.canvas.width - 80 : 80,
+        y: G.canvas.height / 2,
+        targetX: G.isPlayer1 ? G.canvas.width - 80 : 80,
+        targetY: G.canvas.height / 2,
+        hp: oppC.hp, maxHp: oppC.hp,
+        radius: oppC.radius, color: oppC.color, glowColor: oppC.glowColor
     };
-    
-    gameTime = 180;
-    
-    // ÉCOUTER LES CHANGEMENTS DE L'ADVERSAIRE
-    const matchRef = rtdb.ref(`active_matches/${matchId}/gameState`);
-    GameState.matchStateListener = matchRef.on('value', (snapshot) => {
-        const state = snapshot.val();
-        if (state) {
-            updateGameState(state, isPlayer1);
-        }
+
+    G.gameTime    = 180;
+    G.matchEnded  = false;
+    G.particles   = [];
+    G.lastAtkTime = 0;
+    G.lastSpeTime = 0;
+    G.lastPosSend = 0;
+
+    // Mettre à jour y initiale dans Firebase
+    RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}`).update({
+        y: Math.round(G.canvas.height / 2)
     });
-    
-    // CONTRÔLES CLAVIER
-    setupKeyboardControls(matchId);
-    
-    // BOUCLE DE JEU
-    GameState.gameLoop = setInterval(() => {
-        updateGame();
-        renderGame();
-    }, 1000 / 60);
-    
-    // TIMER
-    updateTimerDisplay();
-    GameState.gameTimerInterval = setInterval(() => {
-        gameTime--;
-        updateTimerDisplay();
-        
-        if (gameTime <= 0) {
-            console.log('⏰ Temps écoulé!');
-            endMatch(matchId);
+
+    // Listener Firebase match
+    if (G.matchListenerRef && G.matchListenerCb) {
+        G.matchListenerRef.off('value', G.matchListenerCb);
+    }
+    G.matchListenerCb  = onMatchSnapshot;
+    G.matchListenerRef = RTDB.ref(`active_matches/${G.matchId}`);
+    G.matchListenerRef.on('value', G.matchListenerCb);
+
+    installKeyboard();
+    installMobile();
+
+    if (G.rafId) cancelAnimationFrame(G.rafId);
+    G.rafId = requestAnimationFrame(gameLoop);
+
+    startCooldownUI();
+    updateTimerUI();
+    updateHpBars();
+    console.log('🎯 Game init. P1:', G.isPlayer1);
+}
+
+function resizeCanvas() {
+    if (!G.canvas) return;
+    G.canvas.width  = window.innerWidth;
+    G.canvas.height = window.innerHeight;
+}
+
+/* =============================================
+   FIREBASE SNAPSHOT
+   ============================================= */
+function onMatchSnapshot(snap) {
+    const data = snap.val();
+    if (!data) return;
+    if (data.status === 'finished' && !G.matchEnded) { handleMatchEnd(); return; }
+
+    const gs = data.gameState;
+    if (!gs) return;
+
+    const oppK = G.isPlayer1 ? 'player2' : 'player1';
+    const myK  = G.isPlayer1 ? 'player1' : 'player2';
+
+    if (gs[oppK]) {
+        G.opponent.targetX = gs[oppK].x || G.opponent.targetX;
+        G.opponent.targetY = gs[oppK].y || G.opponent.targetY;
+        G.opponent.hp      = gs[oppK].hp !== undefined ? gs[oppK].hp : G.opponent.hp;
+    }
+    if (gs[myK]) {
+        G.player.hp = gs[myK].hp !== undefined ? gs[myK].hp : G.player.hp;
+    }
+    if (data.timeLeft !== undefined) {
+        G.gameTime = data.timeLeft;
+        updateTimerUI();
+    }
+
+    updateHpBars();
+
+    if ((G.player.hp <= 0 || G.opponent.hp <= 0) && !G.matchEnded) handleMatchEnd();
+}
+
+/* =============================================
+   SERVER TIMER — uniquement player1
+   ============================================= */
+function startServerTimer() {
+    if (G.timerIntervalId) return;
+    G.timerIntervalId = setInterval(() => {
+        if (G.matchEnded || !G.matchId) {
+            clearInterval(G.timerIntervalId); G.timerIntervalId = null; return;
         }
+        RTDB.ref(`active_matches/${G.matchId}/timeLeft`).transaction(val => {
+            if (val === null) return null;
+            const next = val - 1;
+            if (next <= 0) {
+                setTimeout(() => {
+                    if (!G.matchEnded) RTDB.ref(`active_matches/${G.matchId}/status`).set('finished');
+                }, 50);
+                return 0;
+            }
+            return next;
+        });
     }, 1000);
 }
 
-function updateTimerDisplay() {
-    const mins = Math.floor(gameTime / 60);
-    const secs = gameTime % 60;
-    document.getElementById('game-timer').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+/* =============================================
+   TIMER + HP UI
+   ============================================= */
+function updateTimerUI() {
+    const m = Math.floor(G.gameTime / 60);
+    const s = G.gameTime % 60;
+    const el = document.getElementById('game-timer');
+    el.textContent = m + ':' + String(s).padStart(2, '0');
+    el.classList.toggle('warning', G.gameTime <= 20);
 }
 
-// ==========================================
-// MISE À JOUR DE L'ÉTAT DU JEU
-// ==========================================
-
-function updateGameState(state, isPlayer1) {
-    if (!state) return;
-    
-    const playerState = isPlayer1 ? state.player1 : state.player2;
-    const opponentState = isPlayer1 ? state.player2 : state.player1;
-    
-    // Mise à jour de l'adversaire
-    if (opponentState) {
-        opponent.x += (opponentState.x - opponent.x) * 0.3;
-        opponent.y += (opponentState.y - opponent.y) * 0.3;
-        opponent.hp = opponentState.hp || 0;
-    }
-    
-    // Mise à jour de notre HP
-    if (playerState) {
-        player.hp = playerState.hp || 0;
-    }
-    
-    // Mise à jour de l'affichage des HP
-    const playerPercent = Math.max(0, Math.min(100, player.hp));
-    const opponentPercent = Math.max(0, Math.min(100, opponent.hp));
-    
-    document.getElementById('player-hp').style.width = playerPercent + '%';
-    document.getElementById('opponent-hp').style.width = opponentPercent + '%';
-    
-    // VÉRIFIER SI QUELQU'UN EST MORT
-    if (player.hp <= 0 || opponent.hp <= 0) {
-        console.log('💀 Quelqu\'un est mort! Player HP:', player.hp, 'Opponent HP:', opponent.hp);
-        if (!matchEnded) {
-            endMatch(GameState.currentMatch.id);
-        }
-    }
+function updateHpBars() {
+    setBar('player-hp', 'player-hp-text', G.player.hp, G.player.maxHp);
+    setBar('opponent-hp', 'opponent-hp-text', G.opponent.hp, G.opponent.maxHp);
 }
 
-// ==========================================
-// CONTRÔLES CLAVIER - ZQSD + AE
-// ==========================================
-
-function setupKeyboardControls(matchId) {
-    console.log('⌨️ Contrôles clavier activés: ZQSD pour bouger, A pour attaquer, E pour spécial');
-    
-    // DÉTECTION DES TOUCHES
-    document.addEventListener('keydown', (e) => {
-        const key = e.key.toLowerCase();
-        keys[key] = true;
-        
-        // ATTAQUE NORMALE (A)
-        if (key === 'a') {
-            performAttack(matchId, isPlayer1, 'normal');
-        }
-        
-        // ATTAQUE SPÉCIALE (E)
-        if (key === 'e') {
-            performAttack(matchId, isPlayer1, 'special');
-        }
-    });
-    
-    document.addEventListener('keyup', (e) => {
-        keys[e.key.toLowerCase()] = false;
-    });
+function setBar(fillId, txtId, hp, maxHp) {
+    const pct  = Math.max(0, Math.min(100, (hp / maxHp) * 100));
+    const fill = document.getElementById(fillId);
+    fill.style.width = pct + '%';
+    fill.classList.remove('warn', 'danger');
+    if (pct <= 25)      fill.classList.add('danger');
+    else if (pct <= 50) fill.classList.add('warn');
+    const txt = document.getElementById(txtId);
+    if (txt) txt.textContent = Math.max(0, Math.ceil(hp));
 }
 
-// ==========================================
-// MISE À JOUR DU JEU
-// ==========================================
-
-function updateGame() {
-    const speed = player.speed;
-    
-    // DÉPLACEMENTS ZQSD
-    player.vx = 0;
-    player.vy = 0;
-    
-    if (keys['z']) player.vy = -speed;
-    if (keys['s']) player.vy = speed;
-    if (keys['q']) player.vx = -speed;
-    if (keys['d']) player.vx = speed;
-    
-    // APPLIQUER LE MOUVEMENT
-    player.x += player.vx;
-    player.y += player.vy;
-    
-    // LIMITES DU CANVAS
-    player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
-    player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
-    
-    // ENVOYER LA POSITION À FIREBASE
-    if (player.vx !== 0 || player.vy !== 0) {
-        updatePlayerPosition(GameState.currentMatch.id, isPlayer1);
-    }
+/* =============================================
+   KEYBOARD — une seule installation
+   ============================================= */
+function installKeyboard() {
+    if (G.keydownFn) return;
+    G.keydownFn = (e) => {
+        const k = e.key.toLowerCase();
+        G.keys[k] = true;
+        if (k === 'a') doAttack('normal');
+        if (k === 'e') doAttack('special');
+    };
+    G.keyupFn = (e) => { G.keys[e.key.toLowerCase()] = false; };
+    document.addEventListener('keydown', G.keydownFn);
+    document.addEventListener('keyup',   G.keyupFn);
 }
 
-let lastPositionUpdate = 0;
-function updatePlayerPosition(matchId, isPlayer1) {
-    const now = Date.now();
-    if (now - lastPositionUpdate < 50) return;
-    lastPositionUpdate = now;
-    
-    const playerKey = isPlayer1 ? 'player1' : 'player2';
-    rtdb.ref(`active_matches/${matchId}/gameState/${playerKey}`).update({
-        x: Math.round(player.x),
-        y: Math.round(player.y)
-    });
+function removeKeyboard() {
+    if (!G.keydownFn) return;
+    document.removeEventListener('keydown', G.keydownFn);
+    document.removeEventListener('keyup',   G.keyupFn);
+    G.keydownFn = null;
+    G.keyupFn   = null;
+    G.keys      = {};
 }
 
-// ==========================================
-// ATTAQUES
-// ==========================================
+/* =============================================
+   MOBILE CONTROLS
+   ============================================= */
+function installMobile() {
+    if (G.mobileInstalled) return;
+    G.mobileInstalled = true;
 
-function performAttack(matchId, isPlayer1, type) {
-    const now = Date.now();
-    
-    // COOLDOWN
-    if (type === 'normal') {
-        if (now - lastAttackTime < ATTACK_COOLDOWN) {
-            console.log('⏳ Attaque normale en cooldown');
-            return;
-        }
-        lastAttackTime = now;
-    } else {
-        if (now - lastSpecialTime < SPECIAL_COOLDOWN) {
-            console.log('⏳ Attaque spéciale en cooldown');
-            return;
-        }
-        lastSpecialTime = now;
-    }
-    
-    // CALCULER LA DISTANCE
-    const distance = Math.sqrt(
-        Math.pow(player.x - opponent.x, 2) + 
-        Math.pow(player.y - opponent.y, 2)
-    );
-    
-    const attackRange = type === 'special' ? 150 : 100;
-    const damage = type === 'special' ? 20 : 10;
-    
-    console.log(`⚔️ Attaque ${type}! Distance:`, distance, 'Portée:', attackRange);
-    
-    if (distance <= attackRange) {
-        console.log(`💥 TOUCHÉ! Dégâts: ${damage}`);
-        
-        // EFFET VISUEL
-        flashScreen(type === 'special' ? '#FDCB6E' : '#FF3366');
-        
-        // INFLIGER DES DÉGÂTS
-        const opponentKey = isPlayer1 ? 'player2' : 'player1';
-        
-        rtdb.ref(`active_matches/${matchId}/gameState/${opponentKey}/hp`)
-            .transaction((currentHP) => {
-                if (currentHP === null) currentHP = 100;
-                const newHP = Math.max(0, currentHP - damage);
-                console.log(`❤️ HP adversaire: ${currentHP} → ${newHP}`);
-                return newHP;
+    const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    const ctrl = document.querySelector('.mobile-controls');
+    if (!isMobile) return;
+    ctrl.classList.add('visible');
+
+    const zone = document.getElementById('joystick-zone');
+    const knob = document.getElementById('joystick-knob');
+    let cx = 0, cy = 0, dragging = false;
+
+    const jStart = (e) => {
+        dragging = true;
+        const r = zone.getBoundingClientRect();
+        cx = r.left + r.width / 2;
+        cy = r.top  + r.height / 2;
+        jMove(e);
+    };
+    const jMove = (e) => {
+        if (!dragging) return;
+        e.preventDefault();
+        const t = e.touches[0];
+        let dx = t.clientX - cx, dy = t.clientY - cy;
+        const maxR = zone.offsetWidth / 2 - 10;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d > maxR) { dx *= maxR/d; dy *= maxR/d; }
+        knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+        G.keys['z'] = dy < -12;
+        G.keys['s'] = dy >  12;
+        G.keys['q'] = dx < -12;
+        G.keys['d'] = dx >  12;
+    };
+    const jEnd = () => {
+        dragging = false;
+        knob.style.transform = 'translate(-50%,-50%)';
+        G.keys['z'] = G.keys['s'] = G.keys['q'] = G.keys['d'] = false;
+    };
+
+    zone.addEventListener('touchstart',  jStart,  { passive: false });
+    zone.addEventListener('touchmove',   jMove,   { passive: false });
+    zone.addEventListener('touchend',    jEnd);
+    zone.addEventListener('touchcancel', jEnd);
+
+    document.getElementById('btn-atk').addEventListener('touchstart', (e) => { e.preventDefault(); doAttack('normal');  });
+    document.getElementById('btn-spe').addEventListener('touchstart', (e) => { e.preventDefault(); doAttack('special'); });
+}
+
+/* =============================================
+   COOLDOWN UI
+   ============================================= */
+function startCooldownUI() {
+    stopCooldownUI();
+    G.cdAtkInterval = setInterval(() => {
+        if (!G.player) return;
+        const pct = Math.min(100, ((Date.now() - G.lastAtkTime) / G.player.atkCd) * 100);
+        document.getElementById('cd-attack-fill').style.width = pct + '%';
+        document.getElementById('btn-atk').classList.toggle('cooldown', pct < 98);
+    }, 80);
+    G.cdSpeInterval = setInterval(() => {
+        if (!G.player) return;
+        const pct = Math.min(100, ((Date.now() - G.lastSpeTime) / G.player.speCd) * 100);
+        document.getElementById('cd-special-fill').style.width = pct + '%';
+        document.getElementById('btn-spe').classList.toggle('cooldown', pct < 98);
+    }, 80);
+}
+function stopCooldownUI() {
+    clearInterval(G.cdAtkInterval); G.cdAtkInterval = null;
+    clearInterval(G.cdSpeInterval); G.cdSpeInterval = null;
+}
+
+/* =============================================
+   GAME LOOP
+   ============================================= */
+function gameLoop() {
+    if (G.matchEnded) return;
+    update();
+    render();
+    G.rafId = requestAnimationFrame(gameLoop);
+}
+
+/* =============================================
+   UPDATE
+   ============================================= */
+function update() {
+    if (!G.player || !G.canvas) return;
+    const spd = G.player.speed;
+    let vx = 0, vy = 0;
+    if (G.keys['z']) vy -= spd;
+    if (G.keys['s']) vy += spd;
+    if (G.keys['q']) vx -= spd;
+    if (G.keys['d']) vx += spd;
+    if (vx !== 0 && vy !== 0) { vx *= 0.7071; vy *= 0.7071; }
+
+    G.player.x = Math.max(G.player.radius, Math.min(G.canvas.width  - G.player.radius, G.player.x + vx));
+    G.player.y = Math.max(G.player.radius, Math.min(G.canvas.height - G.player.radius, G.player.y + vy));
+
+    if (vx !== 0 || vy !== 0) {
+        const now = Date.now();
+        if (now - G.lastPosSend >= 50) {
+            G.lastPosSend = now;
+            RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}`).update({
+                x: Math.round(G.player.x),
+                y: Math.round(G.player.y)
             });
+        }
+    }
+
+    // Interpoler adversaire
+    G.opponent.x += (G.opponent.targetX - G.opponent.x) * 0.2;
+    G.opponent.y += (G.opponent.targetY - G.opponent.y) * 0.2;
+
+    // Particules
+    for (let i = G.particles.length - 1; i >= 0; i--) {
+        const p = G.particles[i];
+        p.life--;
+        if (p.life <= 0) { G.particles.splice(i, 1); continue; }
+        p.x += p.vx; p.y += p.vy;
+        p.vx *= 0.95; p.vy *= 0.95;
+    }
+}
+
+/* =============================================
+   ATTAQUE
+   ============================================= */
+function doAttack(type) {
+    if (G.matchEnded || !G.player || !G.opponent) return;
+    const now = Date.now();
+    if (type === 'normal') {
+        if (now - G.lastAtkTime < G.player.atkCd) return;
+        G.lastAtkTime = now;
     } else {
-        console.log('❌ Trop loin pour toucher!');
+        if (now - G.lastSpeTime < G.player.speCd) return;
+        G.lastSpeTime = now;
+    }
+
+    const dx   = G.opponent.x - G.player.x;
+    const dy   = G.opponent.y - G.player.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const range  = type === 'normal' ? G.player.atkRange  : G.player.speRange;
+    const damage = type === 'normal' ? G.player.atkDmg    : G.player.speDmg;
+
+    spawnAtkParticles(G.player.x, G.player.y, dx, dy, type);
+
+    if (dist > range) return;
+
+    console.log('💥 HIT', type, damage + 'dmg');
+    flashHit(type);
+    spawnHitParticles(G.opponent.x, G.opponent.y, type);
+
+    // Transaction atomique sur le HP
+    const oppK = G.isPlayer1 ? 'player2' : 'player1';
+    RTDB.ref(`active_matches/${G.matchId}/gameState/${oppK}/hp`).transaction(cur => {
+        if (cur === null) return 0;
+        return Math.max(0, cur - damage);
+    });
+}
+
+/* =============================================
+   PARTICULES
+   ============================================= */
+function spawnAtkParticles(x, y, dx, dy, type) {
+    const n = type === 'special' ? 7 : 3;
+    const c = type === 'special' ? '#FDCB6E' : (G.player ? G.player.color : '#FF3366');
+    for (let i = 0; i < n; i++) {
+        const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 1.1;
+        const s = 3 + Math.random() * 5;
+        G.particles.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 16, maxLife: 16, color: c, size: 2 + Math.random()*3 });
+    }
+}
+function spawnHitParticles(x, y, type) {
+    const n = type === 'special' ? 16 : 8;
+    const c = type === 'special' ? '#fff' : '#FFD700';
+    for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const s = 2 + Math.random() * 6;
+        G.particles.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 20, maxLife: 20, color: c, size: 2 + Math.random()*4 });
     }
 }
 
-function flashScreen(color) {
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.globalAlpha = 0.3;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.restore();
-}
+/* =============================================
+   RENDU
+   ============================================= */
+function render() {
+    if (!G.ctx || !G.canvas) return;
+    const ctx = G.ctx, W = G.canvas.width, H = G.canvas.height;
 
-// ==========================================
-// RENDU DU JEU
-// ==========================================
-
-function renderGame() {
-    // FOND
     ctx.fillStyle = '#0F0F1E';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // GRILLE
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grille
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
     ctx.lineWidth = 1;
-    for (let x = 0; x < canvas.width; x += 50) {
+    for (let x = 0; x < W; x += 48) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 48) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    // Adversaire
+    if (G.opponent) drawEntity(ctx, G.opponent);
+    // Joueur
+    if (G.player) drawEntity(ctx, G.player);
+
+    // Particules
+    for (const p of G.particles) {
+        const alpha = p.life / p.maxLife;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle   = p.color;
+        ctx.shadowBlur  = 8;
+        ctx.shadowColor = p.color;
         ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
+        ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
     }
-    for (let y = 0; y < canvas.height; y += 50) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-    }
-    
-    // ADVERSAIRE
-    ctx.fillStyle = opponent.color;
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = opponent.color;
-    ctx.beginPath();
-    ctx.arc(opponent.x, opponent.y, opponent.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    
-    // JOUEUR
-    ctx.fillStyle = player.color;
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = player.color;
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
 }
 
-// ==========================================
-// FIN DU MATCH
-// ==========================================
+function drawEntity(ctx, e) {
+    // Ombre
+    ctx.save();
+    ctx.globalAlpha = 0.2;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y + e.radius - 3, e.radius * 0.82, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
 
-async function endMatch(matchId) {
-    if (matchEnded) {
-        console.log('⚠️ Match déjà terminé');
-        return;
-    }
-    matchEnded = true;
-    
-    console.log('🏁 Fin du match!');
-    
+    // Glow
+    ctx.save();
+    ctx.shadowBlur  = 28;
+    ctx.shadowColor = e.glowColor || e.color;
+    ctx.fillStyle   = e.color;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Corps
+    ctx.fillStyle = e.color;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bord
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+function flashHit(type) {
+    G.ctx.save();
+    G.ctx.globalAlpha = type === 'special' ? 0.25 : 0.16;
+    G.ctx.fillStyle   = type === 'special' ? '#FDCB6E' : '#FF3366';
+    G.ctx.fillRect(0, 0, G.canvas.width, G.canvas.height);
+    G.ctx.restore();
+}
+
+/* =============================================
+   FIN DE MATCH
+   ============================================= */
+function handleMatchEnd() {
+    if (G.matchEnded) return;
+    G.matchEnded = true;
+    console.log('🏁 Fin');
+
     cleanupGame();
-    
-    // MARQUER COMME TERMINÉ
-    await rtdb.ref(`active_matches/${matchId}/status`).set('finished');
-    
-    // DÉTERMINER LE GAGNANT
-    const victory = player.hp > opponent.hp;
-    console.log(victory ? '🎉 VICTOIRE!' : '💔 DÉFAITE', `(${player.hp} HP vs ${opponent.hp} HP)`);
-    
-    // CALCUL DES TROPHÉES
+
+    const victory = G.player.hp > G.opponent.hp;
+    console.log(victory ? '🎉 VICTOIRE' : '💔 DÉFAITE', `| ${G.player.hp} vs ${G.opponent.hp}`);
+
+    RTDB.ref(`active_matches/${G.matchId}/status`).set('finished');
+
     const trophyChange = victory ? 10 : -5;
-    
-    // MISE À JOUR DES STATS
-    await updatePlayerStats(victory, trophyChange);
-    
-    // SUPPRIMER LE MATCH
-    setTimeout(async () => {
-        await rtdb.ref(`active_matches/${matchId}`).remove();
-    }, 2000);
-    
-    // AFFICHER LE RÉSULTAT
+    updatePlayerStats(victory, trophyChange);
+
+    const mid = G.matchId;
+    setTimeout(() => RTDB.ref(`active_matches/${mid}`).remove(), 3000);
+
     showResult(victory, trophyChange);
 }
 
-function cleanupGame() {
-    console.log('🧹 Nettoyage du jeu');
-    
-    if (GameState.gameLoop) {
-        clearInterval(GameState.gameLoop);
-        GameState.gameLoop = null;
-    }
-    
-    if (GameState.gameTimerInterval) {
-        clearInterval(GameState.gameTimerInterval);
-        GameState.gameTimerInterval = null;
-    }
-    
-    if (GameState.matchStateListener && GameState.currentMatch) {
-        rtdb.ref(`active_matches/${GameState.currentMatch.id}/gameState`).off('value', GameState.matchStateListener);
-        GameState.matchStateListener = null;
-    }
-    
-    keys = {};
+async function updatePlayerStats(victory, trophyChange) {
+    const curTr = G.playerData ? (G.playerData.trophies || 0) : 100;
+    const newTr = Math.max(0, curTr + trophyChange);
+    console.log(`🏆 ${curTr} → ${newTr}`);
+
+    await FSDB.collection('players').doc(G.user.uid).update({
+        trophies:     newTr,
+        totalMatches: firebase.firestore.FieldValue.increment(1),
+        wins:         firebase.firestore.FieldValue.increment(victory ? 1 : 0),
+        losses:       firebase.firestore.FieldValue.increment(victory ? 0 : 1)
+    });
+    lbCache = null; // invalider cache
 }
 
-async function updatePlayerStats(victory, trophyChange) {
-    const playerRef = db.collection('players').doc(GameState.currentUser.uid);
-    
-    const currentTrophies = GameState.playerData.trophies || 0;
-    const newTrophies = Math.max(0, currentTrophies + trophyChange);
-    
-    console.log(`🏆 Trophées: ${currentTrophies} ${trophyChange > 0 ? '+' : ''}${trophyChange} = ${newTrophies}`);
-    
-    await playerRef.update({
-        trophies: newTrophies,
-        totalMatches: firebase.firestore.FieldValue.increment(1),
-        wins: victory ? firebase.firestore.FieldValue.increment(1) : firebase.firestore.FieldValue.increment(0),
-        losses: !victory ? firebase.firestore.FieldValue.increment(1) : firebase.firestore.FieldValue.increment(0)
-    });
-}
+/* =============================================
+   RESULT SCREEN + CONFETTI
+   ============================================= */
+let confettiCanvas = null, confettiCtx = null, confettiList = [], confettiRaf = null;
 
 function showResult(victory, trophyChange) {
     showScreen('result-screen');
-    
-    const title = document.getElementById('result-title');
-    title.textContent = victory ? 'VICTOIRE!' : 'DÉFAITE';
-    title.className = victory ? 'result-title victory' : 'result-title defeat';
-    
-    const trophyChangeText = trophyChange > 0 ? `+${trophyChange}` : trophyChange;
-    const newTotal = Math.max(0, (GameState.playerData.trophies || 0) + trophyChange);
-    
-    document.getElementById('result-trophies').textContent = `${trophyChangeText} 🏆`;
-    document.getElementById('result-total').textContent = `${newTotal} 🏆`;
+    document.getElementById('result-title').textContent = victory ? 'VICTOIRE!' : 'DÉFAITE';
+    document.getElementById('result-title').className   = 'result-title ' + (victory ? 'victory' : 'defeat');
+
+    const sign = trophyChange >= 0 ? '+' : '';
+    const trEl = document.getElementById('result-trophies');
+    trEl.textContent = sign + trophyChange + ' 🏆';
+    trEl.classList.toggle('negative', trophyChange < 0);
+
+    setTimeout(() => {
+        document.getElementById('result-total').textContent = (G.playerData ? G.playerData.trophies : 0) + ' 🏆';
+    }, 800);
+
+    if (victory) startConfetti(); else stopConfetti();
+}
+
+function startConfetti() {
+    stopConfetti();
+    const container = document.querySelector('.result-particles');
+    confettiCanvas  = document.createElement('canvas');
+    confettiCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;';
+    container.appendChild(confettiCanvas);
+    confettiCtx = confettiCanvas.getContext('2d');
+    confettiCanvas.width  = window.innerWidth;
+    confettiCanvas.height = window.innerHeight;
+    confettiList = Array.from({ length: 70 }, makeConfetti);
+    (function loop() {
+        confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+        for (const p of confettiList) {
+            p.y += p.vy; p.vy += 0.07; p.x += p.vx; p.rot += p.rv;
+            if (p.y > confettiCanvas.height) { p.y = -8; p.x = Math.random() * confettiCanvas.width; p.vy = 0.8; }
+            confettiCtx.save();
+            confettiCtx.translate(p.x, p.y);
+            confettiCtx.rotate(p.rot);
+            confettiCtx.fillStyle = p.c;
+            confettiCtx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+            confettiCtx.restore();
+        }
+        confettiRaf = requestAnimationFrame(loop);
+    })();
+}
+function stopConfetti() {
+    if (confettiRaf) cancelAnimationFrame(confettiRaf);
+    if (confettiCanvas && confettiCanvas.parentNode) confettiCanvas.parentNode.removeChild(confettiCanvas);
+    confettiCanvas = null; confettiRaf = null;
+}
+function makeConfetti() {
+    const colors = ['#FF3366','#FDCB6E','#6C5CE7','#00e676','#ff9800','#fff','#00bcd4'];
+    return {
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight - 300,
+        vx: (Math.random()-0.5) * 2.5,
+        vy: 0.5 + Math.random() * 2,
+        w: 5 + Math.random() * 6,
+        h: 3 + Math.random() * 4,
+        rot: Math.random() * Math.PI * 2,
+        rv: (Math.random()-0.5) * 0.18,
+        c: colors[Math.floor(Math.random() * colors.length)]
+    };
 }
 
 document.getElementById('return-menu-btn').addEventListener('click', () => {
+    stopConfetti();
     showScreen('main-menu');
 });
 
-// ==========================================
-// CLASSEMENT
-// ==========================================
-
+/* =============================================
+   LEADERBOARD
+   ============================================= */
 document.getElementById('leaderboard-btn').addEventListener('click', showLeaderboard);
-document.getElementById('close-leaderboard').addEventListener('click', () => {
-    showScreen('main-menu');
-});
+document.getElementById('close-leaderboard').addEventListener('click', () => showScreen('main-menu'));
+
+let lbCache = null, lbCacheTime = 0;
+const LB_TTL = 120000;
 
 async function showLeaderboard() {
     showScreen('leaderboard-screen');
-    
-    const now = Date.now();
-    if (GameState.cache.leaderboard && 
-        (now - GameState.cache.leaderboardTimestamp) < GameState.cache.CACHE_DURATION) {
-        renderLeaderboard(GameState.cache.leaderboard);
-        return;
-    }
-    
+    if (lbCache && (Date.now() - lbCacheTime) < LB_TTL) { renderLB(lbCache); return; }
     try {
-        const snapshot = await db.collection('players')
-            .orderBy('trophies', 'desc')
-            .limit(50)
-            .get();
-        
-        const leaderboard = [];
-        snapshot.forEach(doc => {
-            leaderboard.push({ id: doc.id, ...doc.data() });
-        });
-        
-        GameState.cache.leaderboard = leaderboard;
-        GameState.cache.leaderboardTimestamp = now;
-        
-        renderLeaderboard(leaderboard);
-    } catch (error) {
-        console.error('❌ Erreur classement:', error);
-    }
+        const snap = await FSDB.collection('players').orderBy('trophies','desc').limit(50).get();
+        const list = [];
+        snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        lbCache     = list;
+        lbCacheTime = Date.now();
+        renderLB(list);
+    } catch (e) { console.error('❌ LB:', e); }
 }
 
-function renderLeaderboard(players) {
-    const list = document.getElementById('leaderboard-list');
-    list.innerHTML = '';
-    
-    players.forEach((player, index) => {
-        const item = document.createElement('div');
-        item.className = 'leaderboard-item';
-        
-        const isCurrentPlayer = player.id === GameState.currentUser.uid;
-        if (isCurrentPlayer) {
-            item.style.background = 'rgba(255, 51, 102, 0.2)';
-        }
-        
-        item.innerHTML = `
-            <span class="leaderboard-rank ${index < 3 ? 'top3' : ''}">${index + 1}</span>
-            <span class="leaderboard-player">${player.username}${isCurrentPlayer ? ' (Vous)' : ''}</span>
-            <span class="leaderboard-trophies">🏆 ${player.trophies || 0}</span>
-        `;
-        
-        list.appendChild(item);
+function renderLB(players) {
+    const ul = document.getElementById('leaderboard-list');
+    ul.innerHTML = '';
+    const rankCls = ['gold','silver','bronze'];
+    players.forEach((p, i) => {
+        const isMe = G.user && p.id === G.user.uid;
+        const div  = document.createElement('div');
+        div.className = 'leaderboard-item' + (isMe ? ' is-me' : '');
+        div.innerHTML =
+            `<span class="lb-rank ${rankCls[i]||''}">${i+1}</span>` +
+            `<div class="lb-avatar">${(p.username||'?')[0].toUpperCase()}</div>` +
+            `<span class="lb-name">${p.username||'Joueur'}${isMe?' (Vous)':''}</span>` +
+            `<span class="lb-trophies">🏆 ${p.trophies||0}</span>`;
+        ul.appendChild(div);
     });
 }
 
-// ==========================================
-// PROFIL
-// ==========================================
-
-document.getElementById('profile-btn').addEventListener('click', () => {
-    alert('Profil - Fonctionnalité à venir!');
-});
-
-// ==========================================
-// INITIALISATION
-// ==========================================
-
-window.addEventListener('load', () => {
-    console.log('🎮 WARSLIGUE chargé!');
-    showScreen('loading-screen');
-    
-    setTimeout(() => {
-        if (auth.currentUser) {
-            showScreen('main-menu');
-        } else {
-            showScreen('auth-screen');
-        }
-    }, 1500);
-});
-
-window.addEventListener('beforeunload', () => {
-    cleanupGame();
-    if (GameState.currentMatch) {
-        rtdb.ref(`active_matches/${GameState.currentMatch.id}`).remove();
+/* =============================================
+   CLEANUP
+   ============================================= */
+function cleanupGame() {
+    if (G.rafId)           { cancelAnimationFrame(G.rafId); G.rafId = null; }
+    if (G.timerIntervalId) { clearInterval(G.timerIntervalId); G.timerIntervalId = null; }
+    if (G.matchListenerRef && G.matchListenerCb) {
+        G.matchListenerRef.off('value', G.matchListenerCb);
+        G.matchListenerRef = null;
+        G.matchListenerCb  = null;
     }
-});
+    stopCooldownUI();
+    G.keys = {};
+    G.particles = [];
+}
+
+function fullCleanup() {
+    cleanupGame();
+    stopMatchmaking();
+    removeKeyboard();
+    stopConfetti();
+    if (G.matchId) {
+        RTDB.ref(`active_matches/${G.matchId}`).remove();
+        G.matchId = null;
+    }
+}
+
+window.addEventListener('beforeunload', fullCleanup);
+
+console.log('🎮 WARSLIGUE — script chargé');
