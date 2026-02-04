@@ -90,12 +90,36 @@
 
     <div class="menu-content">
         <h1 class="game-title">WARSLIGUE</h1>
-        <p class="menu-subtitle">Choisissez votre personnage et combattez !</p>
+        <p class="menu-subtitle">Prêt pour le combat ?</p>
 
-        <!-- CHARACTER SELECTION (dynamique) -->
-        <div class="character-selector" id="character-selector"></div>
+        <!-- SELECTED CHARACTER PREVIEW -->
+        <div class="character-preview" id="character-preview">
+            <div class="preview-card">
+                <div class="preview-icon" id="preview-icon">⚔️</div>
+                <div class="preview-info">
+                    <h3 class="preview-name" id="preview-name">Warrior</h3>
+                    <div class="preview-stats">
+                        <div class="stat-item">
+                            <span class="stat-icon">❤️</span>
+                            <span class="stat-value" id="preview-hp">100</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">⚡</span>
+                            <span class="stat-value" id="preview-speed">5</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">⚔️</span>
+                            <span class="stat-value" id="preview-damage">10</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="menu-buttons">
+            <button id="select-character-btn" class="btn-large btn-secondary">
+                <span class="btn-icon">👤</span><span>CHOISIR COMBATTANT</span>
+            </button>
             <button id="play-btn" class="btn-large btn-primary">
                 <span class="btn-icon">⚔️</span><span>JOUER</span>
             </button>
@@ -108,6 +132,21 @@
             <button id="leaderboard-btn" class="btn-large btn-secondary">
                 <span class="btn-icon">🏅</span><span>CLASSEMENT</span>
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== CHARACTER SELECTION PANEL ===================== -->
+<div id="character-selection-panel" class="side-panel">
+    <div class="panel-overlay" id="character-panel-overlay"></div>
+    <div class="panel-content">
+        <div class="panel-header">
+            <h2 class="panel-title">👤 COMBATTANTS</h2>
+            <button id="close-character-panel" class="btn-close">✕</button>
+        </div>
+        
+        <div class="brawlers-container-panel">
+            <div class="brawlers-grid" id="character-selector"></div>
         </div>
     </div>
 </div>

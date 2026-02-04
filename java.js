@@ -1,5 +1,5 @@
 // ==========================================
-// WARSLIGUE — java.js  (VERSION AVEC VISÉE BRAWL STARS)
+// WARSLIGUE — java.js  (VERSION AVEC VISÉE BRAWL STARS + NOUVELLE SÉLECTION)
 // ==========================================
 
 /* =============================================
@@ -59,7 +59,7 @@ const G = {
     matchEnded: false,
 
     particles: [],
-    projectiles: [],  // Nouveaux projectiles
+    projectiles: [],
 
     lastAtkTime: 0,
     lastSpeTime: 0,
@@ -69,7 +69,6 @@ const G = {
     lastPosSend: 0,
     mobileInstalled: false,
 
-    // SYSTÈME DE VISÉE
     aimAngle: 0,
     aimDistance: 0,
     isAiming: false,
@@ -222,9 +221,9 @@ function listenPlayerData(uid) {
         G.playerData = { id: doc.id, ...doc.data() };
         if (G.playerData.selectedCharacter) {
             G.selectedChar = G.playerData.selectedCharacter;
-            highlightChar(G.selectedChar);
         }
         updateMenuUI();
+        renderCharacterSelector(); // Appel de la nouvelle fonction
     });
 }
 
@@ -236,20 +235,110 @@ function updateMenuUI() {
 }
 
 /* =============================================
-   CHARACTER SELECTION
+   CHARACTER SELECTION (BRAWL STARS STYLE)
    ============================================= */
-function selectCharacter(key) {
-    G.selectedChar = key;
-    highlightChar(key);
-    if (G.user) FSDB.collection('players').doc(G.user.uid).update({ selectedCharacter: key });
+function renderCharacterSelector() {
+    const container = document.getElementById('character-selector');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!G.playerData) return;
+    
+    const ownedChars = G.playerData.ownedCharacters || ['warrior', 'assassin', 'mage'];
+    
+    // Update preview for selected character
+    updateCharacterPreview(G.selectedChar);
+    
+    for (const [key, char] of Object.entries(CHARACTERS)) {
+        const owned = ownedChars.includes(key);
+        const isSelected = G.selectedChar === key;
+        
+        const card = document.createElement('div');
+        card.className = `brawler-card ${isSelected ? 'selected' : ''} ${!owned ? 'locked' : ''}`;
+        card.dataset.char = key;
+        
+        card.innerHTML = `
+            <div class="brawler-card-inner">
+                <div class="brawler-icon" style="background: ${char.color}; box-shadow: 0 0 20px ${char.glowColor};">
+                    ${char.emoji}
+                </div>
+                <div class="brawler-name">${char.name}</div>
+                ${!owned ? '<div class="brawler-lock">🔒</div>' : ''}
+                ${char.rarity ? `<div class="brawler-rarity rarity-${char.rarity}">${char.rarity}</div>` : ''}
+            </div>
+        `;
+        
+        if (owned) {
+            card.addEventListener('click', () => selectCharacter(key));
+        }
+        
+        container.appendChild(card);
+    }
 }
+
+function updateCharacterPreview(charKey) {
+    const char = CHARACTERS[charKey] || CHARACTERS.warrior;
+    
+    const previewIcon = document.getElementById('preview-icon');
+    const previewName = document.getElementById('preview-name');
+    const previewHp = document.getElementById('preview-hp');
+    const previewSpeed = document.getElementById('preview-speed');
+    const previewDamage = document.getElementById('preview-damage');
+    
+    if (previewIcon) {
+        previewIcon.textContent = char.emoji;
+        previewIcon.style.background = char.color;
+        previewIcon.style.boxShadow = `0 0 40px ${char.glowColor}`;
+    }
+    
+    if (previewName) previewName.textContent = char.name;
+    if (previewHp) previewHp.textContent = char.hp;
+    if (previewSpeed) previewSpeed.textContent = char.speed;
+    if (previewDamage) previewDamage.textContent = char.attackDamage;
+}
+
+function selectCharacter(key) {
+    if (!CHARACTERS[key]) return;
+    
+    const ownedChars = G.playerData?.ownedCharacters || ['warrior', 'assassin', 'mage'];
+    if (!ownedChars.includes(key)) return;
+    
+    G.selectedChar = key;
+    updateCharacterPreview(key);
+    highlightChar(key);
+    
+    if (G.user) {
+        FSDB.collection('players').doc(G.user.uid).update({ selectedCharacter: key });
+    }
+    
+    // Fermer le panneau après 500ms pour laisser voir l'animation
+    setTimeout(() => {
+        closeCharacterPanel();
+    }, 500);
+}
+
 function highlightChar(key) {
-    document.querySelectorAll('.char-card').forEach(c => c.classList.toggle('active', c.dataset.char === key));
+    document.querySelectorAll('.brawler-card').forEach(c => {
+        c.classList.toggle('selected', c.dataset.char === key);
+    });
 }
 
 /* =============================================
    SHOP SYSTEM
    ============================================= */
+document.getElementById('select-character-btn').addEventListener('click', openCharacterPanel);
+document.getElementById('close-character-panel').addEventListener('click', closeCharacterPanel);
+document.getElementById('character-panel-overlay').addEventListener('click', closeCharacterPanel);
+
+function openCharacterPanel() {
+    document.getElementById('character-selection-panel').classList.add('active');
+}
+
+function closeCharacterPanel() {
+    document.getElementById('character-selection-panel').classList.remove('active');
+}
+
 document.getElementById('shop-btn').addEventListener('click', openShop);
 document.getElementById('close-shop').addEventListener('click', () => showScreen('main-menu'));
 
@@ -639,7 +728,6 @@ function initGame(matchData) {
     G.lastSpeTime = 0;
     G.lastPosSend = 0;
 
-    // Réinitialiser la visée
     G.isAiming = false;
     G.aimAngle = 0;
 
@@ -677,7 +765,6 @@ function resizeCanvas() {
    SYSTÈME DE VISÉE (BRAWL STARS STYLE)
    ============================================= */
 function installAimControls() {
-    // Desktop - Souris
     G.canvas.addEventListener('mousemove', (e) => {
         if (!G.player) return;
         const rect = G.canvas.getBoundingClientRect();
@@ -690,7 +777,6 @@ function installAimControls() {
         G.aimDistance = Math.min(Math.sqrt(dx*dx + dy*dy), 200);
     });
 
-    // Mobile - Touch sur le canvas pour viser
     G.canvas.addEventListener('touchmove', (e) => {
         if (!G.player) return;
         e.preventDefault();
@@ -733,7 +819,6 @@ function onMatchSnapshot(snap) {
         updateTimerUI();
     }
 
-    // Synchroniser les projectiles de l'adversaire
     if (gs[oppK] && gs[oppK].projectiles) {
         syncOpponentProjectiles(gs[oppK].projectiles);
     }
@@ -746,7 +831,6 @@ function onMatchSnapshot(snap) {
 function syncOpponentProjectiles(oppProjs) {
     if (!oppProjs || oppProjs.length === 0) return;
     
-    // Ajouter les nouveaux projectiles adverses
     for (const proj of oppProjs) {
         const exists = G.projectiles.some(p => p.id === proj.id && !p.isMine);
         if (!exists) {
@@ -949,38 +1033,32 @@ function update() {
     G.opponent.x += (G.opponent.targetX - G.opponent.x) * 0.2;
     G.opponent.y += (G.opponent.targetY - G.opponent.y) * 0.2;
 
-    // Update projectiles
     for (let i = G.projectiles.length - 1; i >= 0; i--) {
         const proj = G.projectiles[i];
         proj.x += proj.vx;
         proj.y += proj.vy;
         proj.life--;
 
-        // Collision avec les bords
         if (proj.x < 0 || proj.x > G.canvas.width || proj.y < 0 || proj.y > G.canvas.height) {
             G.projectiles.splice(i, 1);
             continue;
         }
 
-        // Durée de vie
         if (proj.life <= 0) {
             G.projectiles.splice(i, 1);
             continue;
         }
 
-        // Collision avec l'adversaire (seulement pour mes projectiles)
         if (proj.isMine) {
             const dx = G.opponent.x - proj.x;
             const dy = G.opponent.y - proj.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
             
             if (dist < G.opponent.radius + 5) {
-                // HIT!
                 console.log('💥 PROJECTILE HIT!', proj.damage + 'dmg');
                 spawnHitParticles(proj.x, proj.y, proj.type);
                 flashHit(proj.type);
                 
-                // Appliquer dégâts
                 const oppK = G.isPlayer1 ? 'player2' : 'player1';
                 RTDB.ref(`active_matches/${G.matchId}/gameState/${oppK}/hp`).transaction(cur => {
                     if (cur === null) return 0;
@@ -993,7 +1071,6 @@ function update() {
         }
     }
 
-    // Update particles
     for (let i = G.particles.length - 1; i >= 0; i--) {
         const p = G.particles[i];
         p.life--;
@@ -1020,7 +1097,6 @@ function doAttack(type) {
     const range  = type === 'normal' ? G.player.atkRange  : G.player.speRange;
     const damage = type === 'normal' ? G.player.atkDmg    : G.player.speDmg;
 
-    // Créer projectile
     const projSpeed = type === 'normal' ? 12 : 15;
     const projId = Date.now() + '_' + Math.random();
     
@@ -1040,11 +1116,9 @@ function doAttack(type) {
 
     G.projectiles.push(projectile);
 
-    // Particules de tir
     spawnAtkParticles(G.player.x, G.player.y, 
         Math.cos(G.aimAngle), Math.sin(G.aimAngle), type);
 
-    // Sync avec Firebase (pour que l'adversaire voie le projectile)
     syncProjectilesToFirebase();
 
     console.log('🎯 PROJECTILE LANCÉ', type, '→', G.aimAngle);
@@ -1114,7 +1188,6 @@ function render() {
     ctx.fillStyle = '#0F0F1E';
     ctx.fillRect(0, 0, W, H);
 
-    // Grille
     ctx.strokeStyle = 'rgba(255,255,255,0.04)';
     ctx.lineWidth = 1;
     for (let x = 0; x < W; x += 48) { 
@@ -1130,16 +1203,13 @@ function render() {
         ctx.stroke(); 
     }
 
-    // Dessiner indicateur de visée (rangée d'attaque)
     if (G.player) {
         drawAimIndicator(ctx);
     }
 
-    // Entités
     if (G.opponent) drawEntity(ctx, G.opponent);
     if (G.player) drawEntity(ctx, G.player);
 
-    // Projectiles
     for (const proj of G.projectiles) {
         ctx.save();
         ctx.shadowBlur = 12;
@@ -1149,7 +1219,6 @@ function render() {
         ctx.arc(proj.x, proj.y, proj.size, 0, Math.PI * 2);
         ctx.fill();
         
-        // Trail effect
         ctx.globalAlpha = 0.3;
         ctx.beginPath();
         ctx.arc(proj.x - proj.vx * 1.5, proj.y - proj.vy * 1.5, proj.size * 0.6, 0, Math.PI * 2);
@@ -1157,7 +1226,6 @@ function render() {
         ctx.restore();
     }
 
-    // Particles
     for (const p of G.particles) {
         const alpha = p.life / p.maxLife;
         ctx.save();
@@ -1177,7 +1245,6 @@ function drawAimIndicator(ctx) {
 
     const range = G.player.atkRange;
     
-    // Ligne de visée (subtile)
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
     ctx.lineWidth = 2;
@@ -1192,7 +1259,6 @@ function drawAimIndicator(ctx) {
     ctx.setLineDash([]);
     ctx.restore();
 
-    // Cercle de portée
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 51, 102, 0.2)';
     ctx.lineWidth = 1.5;
@@ -1201,7 +1267,6 @@ function drawAimIndicator(ctx) {
     ctx.stroke();
     ctx.restore();
 
-    // Point de visée
     const aimX = G.player.x + Math.cos(G.aimAngle) * Math.min(range, G.aimDistance);
     const aimY = G.player.y + Math.sin(G.aimAngle) * Math.min(range, G.aimDistance);
     
@@ -1214,7 +1279,6 @@ function drawAimIndicator(ctx) {
     ctx.fill();
     ctx.stroke();
     
-    // Croix de visée
     ctx.beginPath();
     ctx.moveTo(aimX - 12, aimY);
     ctx.lineTo(aimX - 4, aimY);
@@ -1229,7 +1293,6 @@ function drawAimIndicator(ctx) {
 }
 
 function drawEntity(ctx, e) {
-    // Ombre
     ctx.save();
     ctx.globalAlpha = 0.2;
     ctx.fillStyle = '#000';
@@ -1238,7 +1301,6 @@ function drawEntity(ctx, e) {
     ctx.fill();
     ctx.restore();
 
-    // Glow
     ctx.save();
     ctx.shadowBlur  = 28;
     ctx.shadowColor = e.glowColor || e.color;
@@ -1248,7 +1310,6 @@ function drawEntity(ctx, e) {
     ctx.fill();
     ctx.restore();
 
-    // Corps
     ctx.fillStyle = e.color;
     ctx.beginPath();
     ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
@@ -1258,7 +1319,6 @@ function drawEntity(ctx, e) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Emoji au centre
     if (e.emoji) {
         ctx.save();
         ctx.font = (e.radius * 1.2) + 'px Arial';
@@ -1456,4 +1516,4 @@ function fullCleanup() {
 
 window.addEventListener('beforeunload', fullCleanup);
 
-console.log('🎮 WARSLIGUE — Version avec visée Brawl Stars chargée !');
+console.log('🎮 WARSLIGUE — Version avec visée Brawl Stars + Nouvelle sélection chargée !');
