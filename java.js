@@ -1,5 +1,5 @@
 // ==========================================
-// WARSLIGUE — java.js  (VERSION CORRIGÉE - BUGS FIXÉS)
+// WARSLIGUE — java.js  (VERSION AVEC BOUTIQUE)
 // ==========================================
 
 /* =============================================
@@ -123,11 +123,10 @@ document.getElementById('register-btn').addEventListener('click', async () => {
     try {
         const { user } = await AUTH.createUserWithEmailAndPassword(email, password);
         await FSDB.collection('players').doc(user.uid).set({
-            username, email, trophies: 100, gold: 500, wins: 0, losses: 0, totalMatches: 0,
+            username, email, trophies: 0, wins: 0, losses: 0, totalMatches: 0,
             selectedCharacter: 'warrior',
             ownedCharacters: ['warrior', 'assassin', 'mage'],
             ownedSkins: [],
-            lastFreeChest: 0,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             lastLogin:  firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -176,39 +175,29 @@ async function ensurePlayerDoc(user) {
         await FSDB.collection('players').doc(user.uid).set({
             username: 'Joueur_' + user.uid.slice(0,6),
             email: user.email || '',
-            trophies: 100,
-            gold: 500,
+            trophies: 0,
             wins: 0,
             losses: 0,
             totalMatches: 0,
             selectedCharacter: 'warrior',
             ownedCharacters: ['warrior', 'assassin', 'mage'],
             ownedSkins: [],
-            lastFreeChest: 0,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
         });
     } else {
+        // Migrer les anciens comptes
         const data = doc.data();
-        const updates = {};
-        
         if (!data.ownedCharacters) {
-            updates.ownedCharacters = ['warrior', 'assassin', 'mage'];
-            updates.ownedSkins = [];
-        }
-        
-        if (!data.gold && data.gold !== 0) {
-            updates.gold = 500;
-        }
-        
-        if (!data.lastFreeChest) {
-            updates.lastFreeChest = 0;
-        }
-        
-        updates.lastLogin = firebase.firestore.FieldValue.serverTimestamp();
-        
-        if (Object.keys(updates).length > 0) {
-            await FSDB.collection('players').doc(user.uid).update(updates);
+            await FSDB.collection('players').doc(user.uid).update({
+                ownedCharacters: ['warrior', 'assassin', 'mage'],
+                ownedSkins: [],
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } else {
+            FSDB.collection('players').doc(user.uid).update({
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+            });
         }
     }
 }
@@ -226,7 +215,6 @@ function listenPlayerData(uid) {
             highlightChar(G.selectedChar);
         }
         updateMenuUI();
-        renderCharacterSelector(); // ✅ FIX: Rafraîchir le sélecteur
     });
 }
 
@@ -234,41 +222,7 @@ function updateMenuUI() {
     if (!G.playerData) return;
     document.getElementById('player-name').textContent     = G.playerData.username;
     document.getElementById('player-trophies').textContent = G.playerData.trophies || 0;
-    document.getElementById('player-gold').textContent     = G.playerData.gold || 0;
     document.getElementById('player-avatar').textContent   = G.playerData.username[0].toUpperCase();
-}
-
-/* =============================================
-   ✅ FIX: AFFICHER LES PERSONNAGES DÉBLOQUÉS
-   ============================================= */
-function renderCharacterSelector() {
-    if (!G.playerData) return;
-    
-    const selector = document.getElementById('character-selector');
-    selector.innerHTML = '';
-    
-    const ownedChars = G.playerData.ownedCharacters || ['warrior', 'assassin', 'mage'];
-    
-    for (const charKey of ownedChars) {
-        const char = CHARACTERS[charKey];
-        if (!char) continue;
-        
-        const card = document.createElement('div');
-        card.className = `char-card ${charKey === G.selectedChar ? 'active' : ''}`;
-        card.dataset.char = charKey;
-        card.onclick = () => selectCharacter(charKey);
-        
-        card.innerHTML = `
-            <div class="char-icon">${char.emoji}</div>
-            <div class="char-name">${char.name}</div>
-            <div class="char-stats">
-                <span class="stat-hp">❤️ ${char.hp}</span>
-                <span class="stat-spd">💨 ${char.speed}</span>
-            </div>
-        `;
-        
-        selector.appendChild(card);
-    }
 }
 
 /* =============================================
@@ -289,6 +243,7 @@ function highlightChar(key) {
 document.getElementById('shop-btn').addEventListener('click', openShop);
 document.getElementById('close-shop').addEventListener('click', () => showScreen('main-menu'));
 
+// Shop tabs
 document.querySelectorAll('.shop-tab').forEach(tab => {
     tab.addEventListener('click', () => {
         const targetTab = tab.dataset.tab;
@@ -311,6 +266,7 @@ async function renderShop() {
     const ownedChars = playerData.ownedCharacters || ['warrior', 'assassin', 'mage'];
     const ownedSkins = playerData.ownedSkins || [];
 
+    // RENDER CHARACTERS
     const charsGrid = document.getElementById('characters-grid');
     charsGrid.innerHTML = '';
     
@@ -346,6 +302,7 @@ async function renderShop() {
         charsGrid.appendChild(card);
     }
 
+    // RENDER SKINS
     const skinsGrid = document.getElementById('skins-grid');
     skinsGrid.innerHTML = '';
     
@@ -449,516 +406,6 @@ async function buySkin(skinKey, price) {
         console.error('❌ Achat:', e);
         showError('Erreur lors de l\'achat');
     }
-}
-
-/* =============================================
-   CHESTS SYSTEM
-   ============================================= */
-document.getElementById('chests-btn').addEventListener('click', openChests);
-document.getElementById('close-chests').addEventListener('click', () => showScreen('main-menu'));
-document.getElementById('reward-overlay').addEventListener('click', closeRewardModal);
-document.getElementById('claim-reward-btn').addEventListener('click', claimReward);
-
-let currentReward = null;
-
-async function openChests() {
-    showScreen('chests-screen');
-    
-    const playerDoc = await FSDB.collection('players').doc(G.user.uid).get();
-    const playerData = playerDoc.data();
-    document.getElementById('chests-gold').textContent = playerData.gold || 0;
-    
-    await renderChests();
-}
-
-async function renderChests() {
-    const grid = document.getElementById('chests-grid');
-    grid.innerHTML = '';
-
-    const playerDoc = await FSDB.collection('players').doc(G.user.uid).get();
-    const playerData = playerDoc.data();
-    const currentGold = playerData.gold || 0;
-    const lastFreeChest = playerData.lastFreeChest ? playerData.lastFreeChest.toMillis() : 0;
-    
-    const timeSinceLastFree = Date.now() - lastFreeChest;
-    const freeChestReady = timeSinceLastFree >= 14400000; // 4 heures
-    const timeRemaining = Math.max(0, 14400000 - timeSinceLastFree);
-
-    for (const [key, chest] of Object.entries(CHEST_TYPES)) {
-        const card = document.createElement('div');
-        const isFree = chest.cost === 0;
-        const canAfford = currentGold >= chest.cost;
-        const canOpen = isFree ? freeChestReady : canAfford;
-
-        card.className = `chest-card chest-${key} ${!canOpen ? 'locked' : ''} ${isFree && freeChestReady ? 'free-ready' : ''}`;
-        
-        let actionHTML = '';
-        if (isFree) {
-            if (freeChestReady) {
-                actionHTML = `<button class="chest-open-btn" onclick="openChest('${key}')">OUVRIR GRATUIT</button>`;
-            } else {
-                const hours = Math.floor(timeRemaining / 3600000);
-                const minutes = Math.floor((timeRemaining % 3600000) / 60000);
-                actionHTML = `<div class="chest-timer">⏰ ${hours}h ${minutes}m</div>`;
-            }
-        } else {
-            actionHTML = `
-                <div class="chest-cost">
-                    <span>💰</span>
-                    <span>${chest.cost}</span>
-                </div>
-                <button class="chest-open-btn" ${!canAfford ? 'disabled' : ''} onclick="openChest('${key}')">
-                    ${canAfford ? 'OUVRIR' : 'PAS ASSEZ 💰'}
-                </button>
-            `;
-        }
-
-        card.innerHTML = `
-            <div class="chest-icon-display">${chest.emoji}</div>
-            <div class="chest-name">${chest.name}</div>
-            <div class="chest-rewards-preview">
-                ${chest.minGold}-${chest.maxGold} 💰<br>
-                + Personnage ou Skin
-            </div>
-            ${actionHTML}
-        `;
-
-        grid.appendChild(card);
-    }
-}
-
-// ==========================================
-// FONCTION OPENCCHEST CORRIGÉE - À REMPLACER DANS JAVA.JS
-// Remplace la fonction openChest (ligne ~576)
-// ==========================================
-
-async function openChest(chestType) {
-    if (!G.user || !G.playerData) {
-        console.error('❌ Pas de user ou playerData');
-        return;
-    }
-
-    const chest = CHEST_TYPES[chestType];
-    if (!chest) {
-        console.error('❌ Type de coffre invalide:', chestType);
-        return;
-    }
-
-    const isFree = chest.cost === 0;
-
-    try {
-        const playerRef = FSDB.collection('players').doc(G.user.uid);
-        const doc = await playerRef.get();
-        const playerData = doc.data();
-        const currentGold = playerData.gold || 0;
-
-        console.log('🎯 Tentative ouverture coffre:', chestType, 'Gold actuel:', currentGold);
-
-        // Vérifier si assez d'or pour les coffres payants
-        if (!isFree && currentGold < chest.cost) {
-            showError('Pas assez d\'or !');
-            return;
-        }
-
-        // Vérifier le cooldown pour le coffre gratuit
-        if (isFree) {
-            const lastFreeChest = playerData.lastFreeChest ? playerData.lastFreeChest.toMillis() : 0;
-            const timeSinceLastFree = Date.now() - lastFreeChest;
-            if (timeSinceLastFree < 14400000) { // 4 heures
-                showError('Coffre gratuit pas encore disponible !');
-                return;
-            }
-        }
-
-        // 🎲 TIRER LA RÉCOMPENSE
-        const reward = rollChestReward(chestType);
-        if (!reward) {
-            showError('Erreur lors du tirage');
-            return;
-        }
-
-        console.log('🎁 Récompense tirée:', reward);
-
-        // Vérifier si le joueur possède déjà l'item
-        const alreadyOwned = playerOwnsItem(playerData, reward.item);
-        const goldBonus = alreadyOwned ? Math.floor(reward.gold * 0.5) : 0;
-
-        // 📝 PRÉPARER LA MISE À JOUR FIRESTORE
-        const updates = {
-            gold: isFree 
-                ? currentGold + reward.gold + goldBonus
-                : currentGold - chest.cost + reward.gold + goldBonus
-        };
-
-        // Mettre à jour le timestamp du coffre gratuit
-        if (isFree) {
-            updates.lastFreeChest = firebase.firestore.FieldValue.serverTimestamp();
-        }
-
-        // Ajouter le personnage/skin si nouveau
-        if (!alreadyOwned && reward.item) {
-            if (reward.item.type === 'character') {
-                updates.ownedCharacters = firebase.firestore.FieldValue.arrayUnion(reward.item.key);
-                console.log('✅ Nouveau personnage:', reward.item.key);
-            } else if (reward.item.type === 'skin') {
-                updates.ownedSkins = firebase.firestore.FieldValue.arrayUnion(reward.item.key);
-                console.log('✅ Nouveau skin:', reward.item.key);
-            }
-        }
-
-        // 💾 ENREGISTRER DANS FIREBASE
-        await playerRef.update(updates);
-        console.log('✅ Coffre ouvert avec succès!');
-
-        // 🎬 AFFICHER LA MODAL AVEC ANIMATION
-        currentReward = { ...reward, alreadyOwned, goldBonus };
-        showRewardModal(currentReward, chest.emoji);
-
-    } catch (e) {
-        console.error('❌ Erreur ouverture coffre:', e);
-        showError('Erreur lors de l\'ouverture: ' + e.message);
-    }
-}
-
-// ==========================================
-// FONCTION SHOWREWARDMODAL AVEC ANIMATION PROGRESSIVE
-// ==========================================
-
-function showRewardModal(reward, chestEmoji) {
-    const modal = document.getElementById('reward-modal');
-    const openingAnim = document.getElementById('chest-opening');
-    const resultDiv = document.getElementById('reward-result');
-    const chestIcon = document.getElementById('opening-chest-icon');
-
-    modal.classList.add('active');
-    chestIcon.textContent = chestEmoji;
-    openingAnim.style.display = 'flex';
-    resultDiv.style.display = 'none';
-
-    // 🎬 ÉTAPE 1: Animation du coffre qui tremble (2 secondes)
-    chestIcon.style.animation = 'chestShake 0.8s ease infinite';
-    
-    setTimeout(() => {
-        chestIcon.style.animation = 'chestShakeIntense 0.5s ease infinite';
-    }, 1000);
-
-    // 🎬 ÉTAPE 2: Flash et explosion du coffre (2.5 secondes)
-    setTimeout(() => {
-        openingAnim.style.background = 'radial-gradient(circle, rgba(255,255,255,0.4), transparent)';
-        openingAnim.style.transition = 'background 0.3s';
-        
-        setTimeout(() => {
-            openingAnim.style.background = 'transparent';
-        }, 300);
-    }, 2000);
-
-    // 🎬 ÉTAPE 3: Révélation de la rareté (3 secondes)
-    setTimeout(() => {
-        const rarityColor = RARITIES[reward.rarity].color;
-        const rarityGlow = RARITIES[reward.rarity].glowColor;
-        
-        openingAnim.innerHTML = `
-            <div class="rarity-reveal" style="
-                font-size: 3rem;
-                font-weight: 900;
-                color: ${rarityColor};
-                text-shadow: 0 0 30px ${rarityGlow};
-                animation: rarityPulse 0.8s ease;
-                font-family: 'Bungee', cursive;
-                letter-spacing: 0.1em;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 200px;
-            ">
-                ${RARITIES[reward.rarity].name.toUpperCase()}
-            </div>
-        `;
-    }, 2500);
-
-    // 🎬 ÉTAPE 4: Si RARE/EPIC/LEGENDARY, animation spéciale (3.5 secondes)
-    if (reward.rarity !== 'common') {
-        setTimeout(() => {
-            createRarityParticles(reward.rarity);
-            playRaritySound(reward.rarity);
-        }, 3000);
-    }
-
-    // 🎬 ÉTAPE 5: Révélation finale de l'item (4 secondes)
-    setTimeout(() => {
-        openingAnim.style.display = 'none';
-        resultDiv.style.display = 'block';
-
-        const rarityBadge = document.getElementById('reward-rarity');
-        const rewardIcon = document.getElementById('reward-icon');
-        const rewardName = document.getElementById('reward-name');
-        const rewardStatus = document.getElementById('reward-status');
-        const rewardGold = document.getElementById('reward-gold-display');
-        const rewardItem = document.getElementById('reward-item');
-
-        const rarity = RARITIES[reward.rarity];
-        rewardItem.className = `reward-item rarity-${reward.rarity}`;
-        rewardItem.style.setProperty('--reward-rarity-color', rarity.color);
-        rewardItem.style.setProperty('--reward-rarity-glow', rarity.glowColor);
-
-        rarityBadge.textContent = rarity.name.toUpperCase();
-        rarityBadge.style.background = rarity.color;
-        rarityBadge.style.boxShadow = `0 4px 15px ${rarity.glowColor}`;
-
-        if (reward.item) {
-            rewardIcon.textContent = reward.item.emoji;
-            rewardName.textContent = reward.item.name;
-        } else {
-            rewardIcon.textContent = '💰';
-            rewardName.textContent = 'Or';
-        }
-
-        if (reward.alreadyOwned) {
-            rewardStatus.textContent = `DÉJÀ POSSÉDÉ (+${reward.goldBonus} 💰)`;
-            rewardStatus.classList.add('duplicate');
-            const totalGold = reward.gold + reward.goldBonus;
-            rewardGold.textContent = `+${totalGold} 💰`;
-        } else {
-            rewardStatus.textContent = reward.rarity !== 'common' ? '✨ NOUVEAU ✨' : 'NOUVEAU !';
-            rewardStatus.classList.remove('duplicate');
-            rewardGold.textContent = `+${reward.gold} 💰`;
-        }
-
-        // 🔥 Confetti pour EPIC et LEGENDARY
-        if (reward.rarity === 'epic' || reward.rarity === 'legendary') {
-            startConfetti();
-        }
-
-    }, 3800);
-}
-
-// ✨ Fonction pour créer des particules de rareté
-function createRarityParticles(rarity) {
-    const modal = document.querySelector('.modal-content');
-    if (!modal) return;
-    
-    const color = RARITIES[rarity].color;
-    
-    for (let i = 0; i < 30; i++) {
-        const particle = document.createElement('div');
-        const angle = (Math.PI * 2 * i) / 30;
-        const distance = 100 + Math.random() * 50;
-        const dx = Math.cos(angle) * distance;
-        const dy = Math.sin(angle) * distance;
-        
-        particle.style.cssText = `
-            position: absolute;
-            width: ${Math.random() * 8 + 4}px;
-            height: ${Math.random() * 8 + 4}px;
-            background: ${color};
-            border-radius: 50%;
-            pointer-events: none;
-            left: 50%;
-            top: 50%;
-            opacity: 0.8;
-            box-shadow: 0 0 10px ${color};
-            animation: particleExplode${i} 1.2s ease-out forwards;
-        `;
-        
-        // Créer une animation unique pour chaque particule
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes particleExplode${i} {
-                0% {
-                    transform: translate(0, 0) scale(1);
-                    opacity: 0.8;
-                }
-                100% {
-                    transform: translate(${dx}px, ${dy}px) scale(0);
-                    opacity: 0;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        modal.appendChild(particle);
-        
-        setTimeout(() => {
-            particle.remove();
-            style.remove();
-        }, 1500);
-    }
-}
-
-// 🔊 Son simulé pour les raretés (vibration sur mobile)
-function playRaritySound(rarity) {
-    if (navigator.vibrate) {
-        if (rarity === 'legendary') {
-            navigator.vibrate([100, 50, 100, 50, 200]);
-        } else if (rarity === 'epic') {
-            navigator.vibrate([80, 40, 150]);
-        } else if (rarity === 'rare') {
-            navigator.vibrate([60, 30, 100]);
-        }
-    }
-}
-
-console.log('✅ Fonction openChest corrigée chargée');
-
-// ==========================================
-// ANIMATION PROGRESSIVE D'OUVERTURE DE COFFRE
-// À REMPLACER dans java.js
-// ==========================================
-
-function showRewardModal(reward, chestEmoji) {
-    const modal = document.getElementById('reward-modal');
-    const openingAnim = document.getElementById('chest-opening');
-    const resultDiv = document.getElementById('reward-result');
-    const chestIcon = document.getElementById('opening-chest-icon');
-
-    modal.classList.add('active');
-    chestIcon.textContent = chestEmoji;
-    openingAnim.style.display = 'flex';
-    resultDiv.style.display = 'none';
-
-    // 🎬 ÉTAPE 1: Animation du coffre qui tremble (2 secondes)
-    setTimeout(() => {
-        chestIcon.style.animation = 'chestShakeIntense 0.5s ease infinite';
-    }, 500);
-
-    // 🎬 ÉTAPE 2: Flash et explosion du coffre (3 secondes)
-    setTimeout(() => {
-        openingAnim.style.background = 'radial-gradient(circle, rgba(255,255,255,0.3), transparent)';
-        openingAnim.style.transition = 'background 0.3s';
-        
-        setTimeout(() => {
-            openingAnim.style.background = 'transparent';
-        }, 300);
-    }, 2500);
-
-    // 🎬 ÉTAPE 3: Révélation de la rareté (3.5 secondes)
-    setTimeout(() => {
-        openingAnim.innerHTML = `
-            <div class="rarity-reveal" style="
-                font-size: 3rem;
-                font-weight: 900;
-                color: ${RARITIES[reward.rarity].color};
-                text-shadow: 0 0 30px ${RARITIES[reward.rarity].glowColor};
-                animation: rarityPulse 0.8s ease;
-            ">
-                ${RARITIES[reward.rarity].name.toUpperCase()}
-            </div>
-        `;
-    }, 3000);
-
-    // 🎬 ÉTAPE 4: Si RARE/EPIC/LEGENDARY, animation spéciale (4.5 secondes)
-    if (reward.rarity !== 'common') {
-        setTimeout(() => {
-            createRarityParticles(reward.rarity);
-            playRaritySound(reward.rarity);
-        }, 3500);
-    }
-
-    // 🎬 ÉTAPE 5: Révélation finale de l'item (5 secondes)
-    setTimeout(() => {
-        openingAnim.style.display = 'none';
-        resultDiv.style.display = 'block';
-
-        const rarityBadge = document.getElementById('reward-rarity');
-        const rewardIcon = document.getElementById('reward-icon');
-        const rewardName = document.getElementById('reward-name');
-        const rewardStatus = document.getElementById('reward-status');
-        const rewardGold = document.getElementById('reward-gold-display');
-        const rewardItem = document.getElementById('reward-item');
-
-        const rarity = RARITIES[reward.rarity];
-        rewardItem.className = `reward-item rarity-${reward.rarity}`;
-        rewardItem.style.setProperty('--reward-rarity-color', rarity.color);
-        rewardItem.style.setProperty('--reward-rarity-glow', rarity.glowColor);
-
-        rarityBadge.textContent = rarity.name.toUpperCase();
-        rarityBadge.style.background = rarity.color;
-        rarityBadge.style.boxShadow = `0 4px 15px ${rarity.glowColor}`;
-
-        if (reward.item) {
-            rewardIcon.textContent = reward.item.emoji;
-            rewardName.textContent = reward.item.name;
-        } else {
-            rewardIcon.textContent = '💰';
-            rewardName.textContent = 'Or';
-        }
-
-        if (reward.alreadyOwned) {
-            rewardStatus.textContent = `DÉJÀ POSSÉDÉ (+${reward.goldBonus} 💰)`;
-            rewardStatus.classList.add('duplicate');
-            const totalGold = reward.gold + reward.goldBonus;
-            rewardGold.textContent = `+${totalGold} 💰`;
-        } else {
-            rewardStatus.textContent = reward.rarity !== 'common' ? '✨ NOUVEAU ✨' : 'NOUVEAU !';
-            rewardStatus.classList.remove('duplicate');
-            rewardGold.textContent = `+${reward.gold} 💰`;
-            
-            // 🎉 Animation spéciale si nouveau personnage/skin rare+
-            if (reward.rarity !== 'common') {
-                rewardItem.style.animation = 'rewardFloatIntense 1.5s ease-in-out infinite';
-                startConfetti();
-            }
-        }
-
-        // 🔥 Confetti pour EPIC et LEGENDARY
-        if (reward.rarity === 'epic' || reward.rarity === 'legendary') {
-            startConfetti();
-        }
-
-    }, 4800);
-}
-
-// ✨ Fonction pour créer des particules de rareté
-function createRarityParticles(rarity) {
-    const modal = document.querySelector('.modal-content');
-    const color = RARITIES[rarity].color;
-    
-    for (let i = 0; i < 30; i++) {
-        const particle = document.createElement('div');
-        particle.style.cssText = `
-            position: absolute;
-            width: ${Math.random() * 8 + 4}px;
-            height: ${Math.random() * 8 + 4}px;
-            background: ${color};
-            border-radius: 50%;
-            pointer-events: none;
-            left: 50%;
-            top: 50%;
-            animation: particleExplode ${Math.random() * 0.5 + 0.8}s ease-out forwards;
-            opacity: 0.8;
-            box-shadow: 0 0 10px ${color};
-        `;
-        modal.appendChild(particle);
-        
-        setTimeout(() => particle.remove(), 1500);
-    }
-}
-
-// 🔊 Son simulé pour les raretés (vibration sur mobile)
-function playRaritySound(rarity) {
-    if (navigator.vibrate) {
-        if (rarity === 'legendary') {
-            navigator.vibrate([100, 50, 100, 50, 200]);
-        } else if (rarity === 'epic') {
-            navigator.vibrate([80, 40, 150]);
-        } else if (rarity === 'rare') {
-            navigator.vibrate([60, 30, 100]);
-        }
-    }
-}
-
-console.log('✅ Animation progressive chargée');
-
-function closeRewardModal() {
-    const modal = document.getElementById('reward-modal');
-    modal.classList.remove('active');
-    stopConfetti();
-    currentReward = null;
-    openChests();
-}
-
-function claimReward() {
-    closeRewardModal();
 }
 
 /* =============================================
@@ -1212,7 +659,7 @@ function resizeCanvas() {
 }
 
 /* =============================================
-   ✅ FIX: FIREBASE SNAPSHOT AVEC HP SYNC
+   FIREBASE SNAPSHOT
    ============================================= */
 function onMatchSnapshot(snap) {
     const data = snap.val();
@@ -1225,7 +672,6 @@ function onMatchSnapshot(snap) {
     const oppK = G.isPlayer1 ? 'player2' : 'player1';
     const myK  = G.isPlayer1 ? 'player1' : 'player2';
 
-    // ✅ FIX: Sync HP de l'adversaire ET le nôtre (pour éviter double victoire)
     if (gs[oppK]) {
         G.opponent.targetX = gs[oppK].x || G.opponent.targetX;
         G.opponent.targetY = gs[oppK].y || G.opponent.targetY;
@@ -1234,7 +680,6 @@ function onMatchSnapshot(snap) {
     if (gs[myK]) {
         G.player.hp = gs[myK].hp !== undefined ? gs[myK].hp : G.player.hp;
     }
-    
     if (data.timeLeft !== undefined) {
         G.gameTime = data.timeLeft;
         updateTimerUI();
@@ -1242,10 +687,7 @@ function onMatchSnapshot(snap) {
 
     updateHpBars();
 
-    // ✅ FIX: Vérifier HP SYNC avant de déclencher fin de match
-    if ((G.player.hp <= 0 || G.opponent.hp <= 0) && !G.matchEnded) {
-        handleMatchEnd();
-    }
+    if ((G.player.hp <= 0 || G.opponent.hp <= 0) && !G.matchEnded) handleMatchEnd();
 }
 
 /* =============================================
@@ -1409,7 +851,7 @@ function gameLoop() {
 }
 
 /* =============================================
-   ✅ FIX: UPDATE AVEC SYNC HP + POSITION CONTINUE
+   UPDATE
    ============================================= */
 function update() {
     if (!G.player || !G.canvas) return;
@@ -1424,22 +866,20 @@ function update() {
     G.player.x = Math.max(G.player.radius, Math.min(G.canvas.width  - G.player.radius, G.player.x + vx));
     G.player.y = Math.max(G.player.radius, Math.min(G.canvas.height - G.player.radius, G.player.y + vy));
 
-    // ✅ FIX CRITIQUE: SYNC CONTINU (même sans mouvement) + HP
-    const now = Date.now();
-    if (now - G.lastPosSend >= 100) { // Sync toutes les 100ms
-        G.lastPosSend = now;
-        RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}`).update({
-            x: Math.round(G.player.x),
-            y: Math.round(G.player.y),
-            hp: Math.max(0, Math.round(G.player.hp)) // ✅ SYNC HP EN TEMPS RÉEL
-        }).catch(e => console.error('❌ Sync error:', e));
+    if (vx !== 0 || vy !== 0) {
+        const now = Date.now();
+        if (now - G.lastPosSend >= 50) {
+            G.lastPosSend = now;
+            RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}`).update({
+                x: Math.round(G.player.x),
+                y: Math.round(G.player.y)
+            });
+        }
     }
 
-    // Interpolation adversaire
     G.opponent.x += (G.opponent.targetX - G.opponent.x) * 0.2;
     G.opponent.y += (G.opponent.targetY - G.opponent.y) * 0.2;
 
-    // Particules
     for (let i = G.particles.length - 1; i >= 0; i--) {
         const p = G.particles[i];
         p.life--;
@@ -1599,17 +1039,12 @@ function handleMatchEnd() {
 }
 
 async function updatePlayerStats(victory, trophyChange) {
-    const curTr = G.playerData ? (G.playerData.trophies || 0) : 100;
+    const curTr = G.playerData ? (G.playerData.trophies || 0) : 0;
     const newTr = Math.max(0, curTr + trophyChange);
-    
-    const goldEarned = victory ? 50 : 20;
-    
     console.log(`🏆 ${curTr} → ${newTr}`);
-    console.log(`💰 +${goldEarned} OR`);
 
     await FSDB.collection('players').doc(G.user.uid).update({
         trophies:     newTr,
-        gold:         firebase.firestore.FieldValue.increment(goldEarned),
         totalMatches: firebase.firestore.FieldValue.increment(1),
         wins:         firebase.firestore.FieldValue.increment(victory ? 1 : 0),
         losses:       firebase.firestore.FieldValue.increment(victory ? 0 : 1)
@@ -1631,9 +1066,6 @@ function showResult(victory, trophyChange) {
     const trEl = document.getElementById('result-trophies');
     trEl.textContent = sign + trophyChange + ' 🏆';
     trEl.classList.toggle('negative', trophyChange < 0);
-
-    const goldEarned = victory ? 50 : 20;
-    document.getElementById('result-gold').textContent = '+' + goldEarned + ' 💰';
 
     setTimeout(() => {
         document.getElementById('result-total').textContent = (G.playerData ? G.playerData.trophies : 0) + ' 🏆';
@@ -1760,4 +1192,4 @@ function fullCleanup() {
 
 window.addEventListener('beforeunload', fullCleanup);
 
-console.log('🎮 WARSLIGUE — Version CORRIGÉE (tous bugs fixés) !')
+console.log('🎮 WARSLIGUE — Version avec boutique chargée !');
