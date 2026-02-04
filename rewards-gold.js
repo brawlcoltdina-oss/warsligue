@@ -12,7 +12,7 @@ const CHEST_TYPES = {
         rewards: {
             gold: { min: 20, max: 50 },
             powerPoints: { min: 5, max: 15 },
-            characterChance: 0.02 // 2% chance
+            characterChance: 0.01 // 1% chance
         }
     },
     rare: {
@@ -24,7 +24,7 @@ const CHEST_TYPES = {
         rewards: {
             gold: { min: 50, max: 120 },
             powerPoints: { min: 15, max: 35 },
-            characterChance: 0.05 // 5% chance
+            characterChance: 0.02 // 2% chance
         }
     },
     epic: {
@@ -36,7 +36,7 @@ const CHEST_TYPES = {
         rewards: {
             gold: { min: 100, max: 250 },
             powerPoints: { min: 30, max: 70 },
-            characterChance: 0.10 // 10% chance
+            characterChance: 0.5 // 5% chance
         }
     },
     legendary: {
@@ -48,7 +48,7 @@ const CHEST_TYPES = {
         rewards: {
             gold: { min: 200, max: 500 },
             powerPoints: { min: 60, max: 150 },
-            characterChance: 0.25 // 25% chance
+            characterChance: 0.15 // 15% chance
         }
     }
 };
