@@ -1,5 +1,5 @@
 // ==========================================
-// WARSLIGUE — java.js CORRIGÉ ✅
+// WARSLIGUE — java.js CORRIGÉ ✅ MATCHMAKING FIX
 // ==========================================
 
 /* =============================================
@@ -357,7 +357,6 @@ function closeCharacterPanel() {
    🔥 MATCHMAKING - FONCTION stopMatchmaking DÉFINIE ICI
    ============================================= */
 
-// 🔥 DÉFINIR stopMatchmaking AVANT son utilisation
 function stopMatchmaking() {
     console.log('🛑 Arrêt matchmaking');
     
@@ -450,6 +449,23 @@ function startMatchmaking() {
 
 function listenForOpponent() {
     const queueRef = RTDB.ref('matchmaking_queue');
+    
+    // 🔥 VÉRIFIER D'ABORD SI UN MATCH EXISTE DÉJÀ POUR MOI
+    RTDB.ref('active_matches').orderByChild('player2/uid').equalTo(G.user.uid).once('value', snapshot => {
+        snapshot.forEach(matchSnapshot => {
+            const matchData = matchSnapshot.val();
+            if (matchData && matchData.status === 'waiting') {
+                console.log('🎮 Match trouvé! Je suis Player 2');
+                stopMatchmaking();
+                G.matchId = matchSnapshot.key;
+                G.isPlayer1 = false;
+                
+                // 🔥 SE MARQUER COMME READY
+                RTDB.ref(`active_matches/${G.matchId}/player2/ready`).set(true);
+                listenForMatchStart();
+            }
+        });
+    });
     
     queueRef.once('value').then(snapshot => {
         const myTrophies = G.playerData.trophies || 0;
@@ -560,6 +576,12 @@ function listenForMatchStart() {
     const checkStart = matchRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
+
+        console.log('📊 État match:', {
+            p1Ready: data.player1?.ready,
+            p2Ready: data.player2?.ready,
+            status: data.status
+        });
 
         if (data.player1?.ready && data.player2?.ready && data.status === 'waiting') {
             console.log('🎮 MATCH START!');
