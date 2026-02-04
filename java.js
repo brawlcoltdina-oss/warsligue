@@ -1,5 +1,5 @@
 // ==========================================
-// WARSLIGUE — java.js  (VERSION AVEC VISÉE BRAWL STARS + NOUVELLE SÉLECTION)
+// WARSLIGUE — java.js  (VERSION AVEC COFFRES BRAWL STARS)
 // ==========================================
 
 /* =============================================
@@ -133,10 +133,16 @@ document.getElementById('register-btn').addEventListener('click', async () => {
     try {
         const { user } = await AUTH.createUserWithEmailAndPassword(email, password);
         await FSDB.collection('players').doc(user.uid).set({
-            username, email, trophies: 0, wins: 0, losses: 0, totalMatches: 0,
+            username, email, 
+            trophies: 0, 
+            gold: 100, 
+            wins: 0, 
+            losses: 0, 
+            totalMatches: 0,
             selectedCharacter: 'warrior',
             ownedCharacters: ['warrior', 'assassin', 'mage'],
             ownedSkins: [],
+            powerPoints: {},
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             lastLogin:  firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -186,30 +192,36 @@ async function ensurePlayerDoc(user) {
             username: 'Joueur_' + user.uid.slice(0,6),
             email: user.email || '',
             trophies: 0,
+            gold: 100,
             wins: 0,
             losses: 0,
             totalMatches: 0,
             selectedCharacter: 'warrior',
             ownedCharacters: ['warrior', 'assassin', 'mage'],
             ownedSkins: [],
+            powerPoints: {},
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
         });
     } else {
         const data = doc.data();
+        const updates = { lastLogin: firebase.firestore.FieldValue.serverTimestamp() };
+        
         if (!data.ownedCharacters) {
-            await FSDB.collection('players').doc(user.uid).update({
-                ownedCharacters: ['warrior', 'assassin', 'mage'],
-                ownedSkins: [],
-                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        } else {
-            FSDB.collection('players').doc(user.uid).update({
-                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            updates.ownedCharacters = ['warrior', 'assassin', 'mage'];
+            updates.ownedSkins = [];
         }
+        if (data.gold === undefined) {
+            updates.gold = 100;
+        }
+        if (!data.powerPoints) {
+            updates.powerPoints = {};
+        }
+        
+        await FSDB.collection('players').doc(user.uid).update(updates);
     }
 }
+
 
 /* =============================================
    PLAYER DATA — listener unique
@@ -223,7 +235,7 @@ function listenPlayerData(uid) {
             G.selectedChar = G.playerData.selectedCharacter;
         }
         updateMenuUI();
-        renderCharacterSelector(); // Appel de la nouvelle fonction
+        renderCharacterSelector();
     });
 }
 
@@ -231,6 +243,7 @@ function updateMenuUI() {
     if (!G.playerData) return;
     document.getElementById('player-name').textContent     = G.playerData.username;
     document.getElementById('player-trophies').textContent = G.playerData.trophies || 0;
+    document.getElementById('player-gold').textContent     = G.playerData.gold || 0;
     document.getElementById('player-avatar').textContent   = G.playerData.username[0].toUpperCase();
 }
 
@@ -247,7 +260,6 @@ function renderCharacterSelector() {
     
     const ownedChars = G.playerData.ownedCharacters || ['warrior', 'assassin', 'mage'];
     
-    // Update preview for selected character
     updateCharacterPreview(G.selectedChar);
     
     for (const [key, char] of Object.entries(CHARACTERS)) {
@@ -312,7 +324,6 @@ function selectCharacter(key) {
         FSDB.collection('players').doc(G.user.uid).update({ selectedCharacter: key });
     }
     
-    // Fermer le panneau après 500ms pour laisser voir l'animation
     setTimeout(() => {
         closeCharacterPanel();
     }, 500);
@@ -325,7 +336,7 @@ function highlightChar(key) {
 }
 
 /* =============================================
-   SHOP SYSTEM
+   CHARACTER PANEL
    ============================================= */
 document.getElementById('select-character-btn').addEventListener('click', openCharacterPanel);
 document.getElementById('close-character-panel').addEventListener('click', closeCharacterPanel);
@@ -339,170 +350,167 @@ function closeCharacterPanel() {
     document.getElementById('character-selection-panel').classList.remove('active');
 }
 
-document.getElementById('shop-btn').addEventListener('click', openShop);
-document.getElementById('close-shop').addEventListener('click', () => showScreen('main-menu'));
+/* =============================================
+   CHESTS SYSTEM
+   ============================================= */
+document.getElementById('chests-btn').addEventListener('click', openChests);
+document.getElementById('close-chests').addEventListener('click', () => showScreen('main-menu'));
 
-document.querySelectorAll('.shop-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        const targetTab = tab.dataset.tab;
-        document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.shop-content').forEach(c => c.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById(`shop-tab-${targetTab}`).classList.add('active');
-    });
+async function openChests() {
+    showScreen('chests-screen');
+    document.getElementById('chests-gold').textContent = G.playerData ? (G.playerData.gold || 0) : 0;
+    renderChestsGrid();
+}
+
+function renderChestsGrid() {
+    const grid = document.getElementById('chests-grid');
+    grid.innerHTML = '';
+    
+    const playerGold = G.playerData?.gold || 0;
+    
+    for (const [key, chest] of Object.entries(CHEST_TYPES)) {
+        const canAfford = playerGold >= chest.price;
+        
+        const card = document.createElement('div');
+        card.className = `shop-item ${!canAfford ? 'locked' : ''}`;
+        card.style.cssText = `
+            border-color: ${chest.color}40;
+            background: linear-gradient(135deg, ${chest.color}10, ${chest.color}05);
+        `;
+        
+        card.innerHTML = `
+            <div class="shop-item-icon" style="font-size: 4rem; filter: drop-shadow(0 0 15px ${chest.glowColor});">
+                ${chest.emoji}
+            </div>
+            <div class="shop-item-name">${chest.name}</div>
+            <div class="shop-item-desc">
+                💰 ${chest.rewards.gold.min}-${chest.rewards.gold.max} pièces<br>
+                ⚡ ${chest.rewards.powerPoints.min}-${chest.rewards.powerPoints.max} points<br>
+                🎲 ${(chest.rewards.characterChance * 100).toFixed(0)}% personnage
+            </div>
+            <div class="shop-item-price">
+                <span>💰</span>
+                <span>${chest.price}</span>
+            </div>
+            <button class="shop-item-btn" ${!canAfford ? 'disabled' : ''} onclick="buyChest('${key}')">
+                ${canAfford ? 'Acheter' : 'Pas assez de 💰'}
+            </button>
+        `;
+        
+        grid.appendChild(card);
+    }
+}
+
+async function buyChest(chestKey) {
+    if (!G.user || !G.playerData) return;
+    
+    const chest = CHEST_TYPES[chestKey];
+    const currentGold = G.playerData.gold || 0;
+    
+    if (currentGold < chest.price) {
+        showError('Pas assez de pièces !');
+        return;
+    }
+    
+    try {
+        // Déduire le prix
+        await FSDB.collection('players').doc(G.user.uid).update({
+            gold: currentGold - chest.price
+        });
+        
+        // Ouvrir le coffre
+        await openChestAnimation(chestKey);
+        
+    } catch (e) {
+        console.error('❌ Achat coffre:', e);
+        showError('Erreur lors de l\'achat');
+    }
+}
+
+async function openChestAnimation(chestKey) {
+    const chest = CHEST_TYPES[chestKey];
+    const modal = document.getElementById('reward-modal');
+    const opening = document.getElementById('chest-opening');
+    const result = document.getElementById('reward-result');
+    const chestIcon = document.getElementById('opening-chest-icon');
+    
+    // Afficher le modal
+    modal.classList.add('active');
+    opening.style.display = 'flex';
+    result.style.display = 'none';
+    
+    // Animer le coffre
+    chestIcon.textContent = chest.emoji;
+    chestIcon.style.fontSize = '6rem';
+    chestIcon.style.animation = 'chestShake 0.8s ease-in-out infinite';
+    
+    // Attendre 2 secondes
+    await new Promise(r => setTimeout(r, 2000));
+    
+    // Générer la récompense
+    const reward = generateChestReward(chestKey, G.playerData);
+    
+    // Appliquer la récompense
+    await applyChestReward(reward);
+    
+    // Afficher le résultat
+    displayChestReward(reward, chest);
+}
+
+async function applyChestReward(reward) {
+    const updates = {
+        gold: firebase.firestore.FieldValue.increment(reward.gold)
+    };
+    
+    if (reward.character && reward.isNew) {
+        updates.ownedCharacters = firebase.firestore.FieldValue.arrayUnion(reward.character);
+    }
+    
+    // Ajouter les power points au personnage (simplifié pour l'instant)
+    
+    await FSDB.collection('players').doc(G.user.uid).update(updates);
+}
+
+function displayChestReward(reward, chest) {
+    const opening = document.getElementById('chest-opening');
+    const result = document.getElementById('reward-result');
+    const rewardItem = document.getElementById('reward-item');
+    const goldDisplay = document.getElementById('reward-gold-display');
+    
+    opening.style.display = 'none';
+    result.style.display = 'block';
+    
+    if (reward.character && reward.isNew) {
+        const char = CHARACTERS[reward.character];
+        rewardItem.style.display = 'block';
+        
+        document.getElementById('reward-rarity').textContent = char.rarity.toUpperCase();
+        document.getElementById('reward-rarity').className = `reward-rarity-badge rarity-${char.rarity}`;
+        
+        document.getElementById('reward-icon').textContent = char.emoji;
+        document.getElementById('reward-icon').style.background = char.color;
+        document.getElementById('reward-icon').style.boxShadow = `0 0 40px ${char.glowColor}`;
+        
+        document.getElementById('reward-name').textContent = char.name;
+        document.getElementById('reward-status').textContent = 'NOUVEAU !';
+        document.getElementById('reward-status').style.color = '#2ECC71';
+    } else {
+        rewardItem.style.display = 'none';
+    }
+    
+    goldDisplay.textContent = `+${reward.gold} 💰 | +${reward.powerPoints} ⚡`;
+}
+
+document.getElementById('claim-reward-btn').addEventListener('click', () => {
+    document.getElementById('reward-modal').classList.remove('active');
+    renderChestsGrid();
 });
 
-async function openShop() {
-    showScreen('shop-screen');
-    document.getElementById('shop-trophies').textContent = G.playerData ? G.playerData.trophies : 0;
-    await renderShop();
-}
+document.getElementById('reward-overlay').addEventListener('click', () => {
+    document.getElementById('reward-modal').classList.remove('active');
+    renderChestsGrid();
+});
 
-async function renderShop() {
-    const playerDoc = await FSDB.collection('players').doc(G.user.uid).get();
-    const playerData = playerDoc.data();
-    const ownedChars = playerData.ownedCharacters || ['warrior', 'assassin', 'mage'];
-    const ownedSkins = playerData.ownedSkins || [];
-
-    const charsGrid = document.getElementById('characters-grid');
-    charsGrid.innerHTML = '';
-    
-    for (const [key, char] of Object.entries(CHARACTERS)) {
-        const owned = ownedChars.includes(key);
-        const canAfford = (G.playerData?.trophies || 0) >= (char.price || 0);
-        
-        const card = document.createElement('div');
-        card.className = `shop-item ${owned ? 'owned' : ''} ${!owned && !canAfford ? 'locked' : ''}`;
-        
-        card.innerHTML = `
-            <div class="shop-item-icon">${char.emoji}</div>
-            <div class="shop-item-name">${char.name}</div>
-            <div class="shop-item-desc">${char.description || 'Personnage de base'}</div>
-            <div class="shop-item-stats">
-                <span class="shop-stat">❤️ ${char.hp}</span>
-                <span class="shop-stat">💨 ${char.speed}</span>
-                <span class="shop-stat">⚔️ ${char.attackDamage}</span>
-            </div>
-            ${!owned ? `
-                <div class="shop-item-price">
-                    <span>🏆</span>
-                    <span>${char.price}</span>
-                </div>
-                <button class="shop-item-btn" ${!canAfford ? 'disabled' : ''} onclick="buyCharacter('${key}', ${char.price})">
-                    ${canAfford ? 'Acheter' : 'Pas assez 🏆'}
-                </button>
-            ` : `
-                <button class="shop-item-btn owned-btn" disabled>Possédé ✓</button>
-            `}
-        `;
-        
-        charsGrid.appendChild(card);
-    }
-
-    const skinsGrid = document.getElementById('skins-grid');
-    skinsGrid.innerHTML = '';
-    
-    for (const [key, skin] of Object.entries(SKINS)) {
-        const baseOwned = ownedChars.includes(skin.characterBase);
-        const skinOwned = ownedSkins.includes(key);
-        const canAfford = (G.playerData?.trophies || 0) >= (skin.price || 0);
-        
-        const card = document.createElement('div');
-        card.className = `shop-item ${skinOwned ? 'owned' : ''} ${!baseOwned || (!skinOwned && !canAfford) ? 'locked' : ''}`;
-        
-        card.innerHTML = `
-            <div class="shop-item-icon">${skin.emoji}</div>
-            <div class="shop-item-name">${skin.name}</div>
-            <div class="shop-item-desc">
-                ${!baseOwned ? `🔒 Nécessite ${CHARACTERS[skin.characterBase].name}` : 'Skin cosmétique'}
-            </div>
-            <div class="skin-preview" style="background:${skin.color}; box-shadow:0 0 18px ${skin.glowColor};"></div>
-            ${!skinOwned ? `
-                <div class="shop-item-price">
-                    <span>🏆</span>
-                    <span>${skin.price}</span>
-                </div>
-                <button class="shop-item-btn" ${!baseOwned || !canAfford ? 'disabled' : ''} onclick="buySkin('${key}', ${skin.price})">
-                    ${!baseOwned ? 'Perso requis' : canAfford ? 'Acheter' : 'Pas assez 🏆'}
-                </button>
-            ` : `
-                <button class="shop-item-btn owned-btn" disabled>Possédé ✓</button>
-            `}
-        `;
-        
-        skinsGrid.appendChild(card);
-    }
-}
-
-async function buyCharacter(charKey, price) {
-    if (!G.user || !G.playerData) return;
-    
-    const currentTrophies = G.playerData.trophies || 0;
-    if (currentTrophies < price) {
-        showError('Pas assez de trophées !');
-        return;
-    }
-    
-    try {
-        const playerRef = FSDB.collection('players').doc(G.user.uid);
-        const doc = await playerRef.get();
-        const data = doc.data();
-        const owned = data.ownedCharacters || ['warrior', 'assassin', 'mage'];
-        
-        if (owned.includes(charKey)) {
-            showError('Vous possédez déjà ce personnage !');
-            return;
-        }
-        
-        await playerRef.update({
-            trophies: currentTrophies - price,
-            ownedCharacters: firebase.firestore.FieldValue.arrayUnion(charKey)
-        });
-        
-        console.log('✅ Personnage acheté:', charKey);
-        await new Promise(r => setTimeout(r, 500));
-        openShop();
-        
-    } catch (e) {
-        console.error('❌ Achat:', e);
-        showError('Erreur lors de l\'achat');
-    }
-}
-
-async function buySkin(skinKey, price) {
-    if (!G.user || !G.playerData) return;
-    
-    const currentTrophies = G.playerData.trophies || 0;
-    if (currentTrophies < price) {
-        showError('Pas assez de trophées !');
-        return;
-    }
-    
-    try {
-        const playerRef = FSDB.collection('players').doc(G.user.uid);
-        const doc = await playerRef.get();
-        const data = doc.data();
-        const ownedSkins = data.ownedSkins || [];
-        
-        if (ownedSkins.includes(skinKey)) {
-            showError('Vous possédez déjà ce skin !');
-            return;
-        }
-        
-        await playerRef.update({
-            trophies: currentTrophies - price,
-            ownedSkins: firebase.firestore.FieldValue.arrayUnion(skinKey)
-        });
-        
-        console.log('✅ Skin acheté:', skinKey);
-        await new Promise(r => setTimeout(r, 500));
-        openShop();
-        
-    } catch (e) {
-        console.error('❌ Achat:', e);
-        showError('Erreur lors de l\'achat');
-    }
-}
 
 /* =============================================
    MATCHMAKING
@@ -760,6 +768,7 @@ function resizeCanvas() {
     G.canvas.width  = window.innerWidth;
     G.canvas.height = window.innerHeight;
 }
+
 
 /* =============================================
    SYSTÈME DE VISÉE (BRAWL STARS STYLE)
@@ -1080,6 +1089,7 @@ function update() {
     }
 }
 
+
 /* =============================================
    ATTAQUE (AVEC PROJECTILES)
    ============================================= */
@@ -1353,21 +1363,23 @@ function handleMatchEnd() {
     RTDB.ref(`active_matches/${G.matchId}/status`).set('finished');
 
     const trophyChange = victory ? 10 : -5;
-    updatePlayerStats(victory, trophyChange);
+    const goldEarned = victory ? 50 : 20;
+    updatePlayerStats(victory, trophyChange, goldEarned);
 
     const mid = G.matchId;
     setTimeout(() => RTDB.ref(`active_matches/${mid}`).remove(), 3000);
 
-    showResult(victory, trophyChange);
+    showResult(victory, trophyChange, goldEarned);
 }
 
-async function updatePlayerStats(victory, trophyChange) {
+async function updatePlayerStats(victory, trophyChange, goldEarned) {
     const curTr = G.playerData ? (G.playerData.trophies || 0) : 0;
     const newTr = Math.max(0, curTr + trophyChange);
     console.log(`🏆 ${curTr} → ${newTr}`);
 
     await FSDB.collection('players').doc(G.user.uid).update({
         trophies:     newTr,
+        gold:         firebase.firestore.FieldValue.increment(goldEarned),
         totalMatches: firebase.firestore.FieldValue.increment(1),
         wins:         firebase.firestore.FieldValue.increment(victory ? 1 : 0),
         losses:       firebase.firestore.FieldValue.increment(victory ? 0 : 1)
@@ -1380,7 +1392,7 @@ async function updatePlayerStats(victory, trophyChange) {
    ============================================= */
 let confettiCanvas = null, confettiCtx = null, confettiList = [], confettiRaf = null;
 
-function showResult(victory, trophyChange) {
+function showResult(victory, trophyChange, goldEarned) {
     showScreen('result-screen');
     document.getElementById('result-title').textContent = victory ? 'VICTOIRE!' : 'DÉFAITE';
     document.getElementById('result-title').className   = 'result-title ' + (victory ? 'victory' : 'defeat');
@@ -1389,6 +1401,8 @@ function showResult(victory, trophyChange) {
     const trEl = document.getElementById('result-trophies');
     trEl.textContent = sign + trophyChange + ' 🏆';
     trEl.classList.toggle('negative', trophyChange < 0);
+    
+    document.getElementById('result-gold').textContent = '+' + goldEarned + ' 💰';
 
     setTimeout(() => {
         document.getElementById('result-total').textContent = (G.playerData ? G.playerData.trophies : 0) + ' 🏆';
@@ -1516,4 +1530,4 @@ function fullCleanup() {
 
 window.addEventListener('beforeunload', fullCleanup);
 
-console.log('🎮 WARSLIGUE — Version avec visée Brawl Stars + Nouvelle sélection chargée !');
+console.log('🎮 WARSLIGUE — Version avec Coffres Brawl Stars chargée !');

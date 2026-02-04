@@ -126,9 +126,6 @@
             <button id="chests-btn" class="btn-large btn-secondary">
                 <span class="btn-icon">📦</span><span>COFFRES</span>
             </button>
-            <button id="shop-btn" class="btn-large btn-secondary">
-                <span class="btn-icon">🛒</span><span>BOUTIQUE</span>
-            </button>
             <button id="leaderboard-btn" class="btn-large btn-secondary">
                 <span class="btn-icon">🏅</span><span>CLASSEMENT</span>
             </button>
@@ -192,37 +189,6 @@
             
             <button id="claim-reward-btn" class="btn-primary">Récupérer</button>
         </div>
-    </div>
-</div>
-
-<!-- ===================== SHOP SCREEN ===================== -->
-<div id="shop-screen" class="screen">
-    <div class="shop-container">
-        <div class="shop-header">
-            <h2 class="screen-title">🛒 Boutique</h2>
-            <div class="player-coins">
-                <span class="coin-icon">🏆</span>
-                <span id="shop-trophies">0</span>
-            </div>
-        </div>
-
-        <!-- TABS -->
-        <div class="shop-tabs">
-            <button class="shop-tab active" data-tab="characters">Personnages</button>
-            <button class="shop-tab" data-tab="skins">Skins</button>
-        </div>
-
-        <!-- CHARACTERS TAB -->
-        <div class="shop-content active" id="shop-tab-characters">
-            <div class="shop-grid" id="characters-grid"></div>
-        </div>
-
-        <!-- SKINS TAB -->
-        <div class="shop-content" id="shop-tab-skins">
-            <div class="shop-grid" id="skins-grid"></div>
-        </div>
-
-        <button id="close-shop" class="btn-secondary shop-close-btn">Retour</button>
     </div>
 </div>
 
@@ -341,7 +307,7 @@
 
 <!-- GAME SCRIPTS (ORDRE IMPORTANT!) -->
 <script src="character.js"></script>
-<script src="rewards gold.js"></script>
+<script src="rewards-gold.js"></script>
 <script src="java.js"></script>
 
 </body>

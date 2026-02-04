@@ -1,6 +1,6 @@
 // ==========================================
-// WARSLIGUE — CHARACTERS & SHOP DATA (avec raretés)
-// Chargé avant java.js
+// WARSLIGUE — CHARACTERS & SHOP DATA (DÉBLOQUABLES PAR COFFRES)
+// Les trophées ne sont PAS une monnaie, seulement les pièces (gold)
 // ==========================================
 
 const CHARACTERS = {
@@ -133,6 +133,25 @@ const CHARACTERS = {
         price: 1200,
         description: "Équilibré et puissant",
         rarity: 'epic'
+    },
+    dragon: {
+        name: "Dragon Knight",
+        emoji: "🐉",
+        hp: 140,
+        speed: 6,
+        attackDamage: 18,
+        attackRange: 110,
+        specialDamage: 40,
+        specialRange: 160,
+        attackCooldown: 1000,
+        specialCooldown: 4000,
+        color: '#E74C3C',
+        glowColor: 'rgba(231,76,60,0.6)',
+        radius: 26,
+        locked: true,
+        price: 1500,
+        description: "Puissance draconique",
+        rarity: 'legendary'
     }
 };
 
