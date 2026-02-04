@@ -354,8 +354,37 @@ function closeCharacterPanel() {
 }
 
 /* =============================================
-   🔥 MATCHMAKING CORRIGÉ
+   🔥 MATCHMAKING - FONCTION stopMatchmaking DÉFINIE ICI
    ============================================= */
+
+// 🔥 DÉFINIR stopMatchmaking AVANT son utilisation
+function stopMatchmaking() {
+    console.log('🛑 Arrêt matchmaking');
+    
+    if (G.mmCountdownId) {
+        clearInterval(G.mmCountdownId);
+        G.mmCountdownId = null;
+    }
+    
+    if (G.mmSearchTimer) {
+        clearTimeout(G.mmSearchTimer);
+        G.mmSearchTimer = null;
+    }
+    
+    if (G.mmChildListenerRef && G.mmChildListener) {
+        G.mmChildListenerRef.off('child_added', G.mmChildListener);
+        G.mmChildListenerRef = null;
+        G.mmChildListener = null;
+    }
+    
+    if (G.myQueueKey) {
+        RTDB.ref(`matchmaking_queue/${G.myQueueKey}`).remove();
+        G.myQueueKey = null;
+    }
+    
+    G.mmSeconds = 0;
+}
+
 document.getElementById('play-btn').addEventListener('click', () => {
     console.log('⚔️ Bouton JOUER cliqué');
     startMatchmaking();
@@ -396,7 +425,6 @@ function startMatchmaking() {
         timestamp: firebase.database.ServerValue.TIMESTAMP
     };
 
-    // 🔥 AJOUT AVEC GESTION D'ERREUR
     const queueRef = RTDB.ref('matchmaking_queue').push();
     G.myQueueKey = queueRef.key;
     
@@ -412,7 +440,6 @@ function startMatchmaking() {
             showScreen('main-menu');
         });
 
-    // Timeout
     G.mmSearchTimer = setTimeout(() => {
         console.log('⏰ Timeout matchmaking');
         stopMatchmaking();
@@ -424,7 +451,6 @@ function startMatchmaking() {
 function listenForOpponent() {
     const queueRef = RTDB.ref('matchmaking_queue');
     
-    // 🔥 VÉRIFIER D'ABORD LES JOUEURS DÉJÀ EN ATTENTE
     queueRef.once('value').then(snapshot => {
         const myTrophies = G.playerData.trophies || 0;
         
@@ -432,27 +458,22 @@ function listenForOpponent() {
             const otherKey = childSnapshot.key;
             const data = childSnapshot.val();
             
-            // Ignorer ma propre entrée
             if (otherKey === G.myQueueKey || !data || data.uid === G.user.uid) return;
             
             const diff = Math.abs(myTrophies - (data.trophies || 0));
             
-            // Si trophées similaires, MATCH !
             if (diff <= 200) {
                 console.log('🎮 Adversaire trouvé!', data.username);
                 
-                // Nettoyer la queue
                 RTDB.ref(`matchmaking_queue/${G.myQueueKey}`).remove();
                 RTDB.ref(`matchmaking_queue/${otherKey}`).remove();
                 
-                // Créer le match
                 createMatch(data, otherKey);
-                return true; // Arrêter la boucle
+                return true;
             }
         });
     });
     
-    // 🔥 PUIS ÉCOUTER LES NOUVEAUX JOUEURS
     G.mmChildListenerRef = queueRef;
     G.mmChildListener = queueRef.on('child_added', async (snapshot) => {
         const data = snapshot.val();
@@ -466,12 +487,8 @@ function listenForOpponent() {
         if (diff <= 200) {
             console.log('🎮 Nouvel adversaire!', data.username);
             
-            // Arr
-
-
             queueRef.off('child_added', G.mmChildListener);
             
-            // Nettoyer
             await RTDB.ref(`matchmaking_queue/${G.myQueueKey}`).remove();
             await RTDB.ref(`matchmaking_queue/${otherKey}`).remove();
             
