@@ -1,5 +1,5 @@
 // ==========================================
-// WARSLIGUE — java.js  (VERSION AVEC BOUTIQUE)
+// WARSLIGUE — java.js  (VERSION AVEC VISÉE BRAWL STARS)
 // ==========================================
 
 /* =============================================
@@ -59,6 +59,7 @@ const G = {
     matchEnded: false,
 
     particles: [],
+    projectiles: [],  // Nouveaux projectiles
 
     lastAtkTime: 0,
     lastSpeTime: 0,
@@ -66,7 +67,17 @@ const G = {
     cdSpeInterval: null,
 
     lastPosSend: 0,
-    mobileInstalled: false
+    mobileInstalled: false,
+
+    // SYSTÈME DE VISÉE
+    aimAngle: 0,
+    aimDistance: 0,
+    isAiming: false,
+    aimStartX: 0,
+    aimStartY: 0,
+    mouseX: 0,
+    mouseY: 0,
+    touchAimId: null
 };
 
 /* =============================================
@@ -186,7 +197,6 @@ async function ensurePlayerDoc(user) {
             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
         });
     } else {
-        // Migrer les anciens comptes
         const data = doc.data();
         if (!data.ownedCharacters) {
             await FSDB.collection('players').doc(user.uid).update({
@@ -243,7 +253,6 @@ function highlightChar(key) {
 document.getElementById('shop-btn').addEventListener('click', openShop);
 document.getElementById('close-shop').addEventListener('click', () => showScreen('main-menu'));
 
-// Shop tabs
 document.querySelectorAll('.shop-tab').forEach(tab => {
     tab.addEventListener('click', () => {
         const targetTab = tab.dataset.tab;
@@ -266,7 +275,6 @@ async function renderShop() {
     const ownedChars = playerData.ownedCharacters || ['warrior', 'assassin', 'mage'];
     const ownedSkins = playerData.ownedSkins || [];
 
-    // RENDER CHARACTERS
     const charsGrid = document.getElementById('characters-grid');
     charsGrid.innerHTML = '';
     
@@ -302,7 +310,6 @@ async function renderShop() {
         charsGrid.appendChild(card);
     }
 
-    // RENDER SKINS
     const skinsGrid = document.getElementById('skins-grid');
     skinsGrid.innerHTML = '';
     
@@ -610,7 +617,8 @@ function initGame(matchData) {
         radius: myC.radius, color: myC.color, glowColor: myC.glowColor,
         speed: myC.speed,
         atkDmg: myC.attackDamage, atkRange: myC.attackRange, atkCd: myC.attackCooldown,
-        speDmg: myC.specialDamage, speRange: myC.specialRange, speCd: myC.specialCooldown
+        speDmg: myC.specialDamage, speRange: myC.specialRange, speCd: myC.specialCooldown,
+        emoji: myC.emoji
     };
 
     G.opponent = {
@@ -619,15 +627,21 @@ function initGame(matchData) {
         targetX: G.isPlayer1 ? G.canvas.width - 80 : 80,
         targetY: G.canvas.height / 2,
         hp: oppC.hp, maxHp: oppC.hp,
-        radius: oppC.radius, color: oppC.color, glowColor: oppC.glowColor
+        radius: oppC.radius, color: oppC.color, glowColor: oppC.glowColor,
+        emoji: oppC.emoji
     };
 
     G.gameTime    = 180;
     G.matchEnded  = false;
     G.particles   = [];
+    G.projectiles = [];
     G.lastAtkTime = 0;
     G.lastSpeTime = 0;
     G.lastPosSend = 0;
+
+    // Réinitialiser la visée
+    G.isAiming = false;
+    G.aimAngle = 0;
 
     RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}`).update({
         y: Math.round(G.canvas.height / 2)
@@ -642,6 +656,7 @@ function initGame(matchData) {
 
     installKeyboard();
     installMobile();
+    installAimControls();
 
     if (G.rafId) cancelAnimationFrame(G.rafId);
     G.rafId = requestAnimationFrame(gameLoop);
@@ -656,6 +671,39 @@ function resizeCanvas() {
     if (!G.canvas) return;
     G.canvas.width  = window.innerWidth;
     G.canvas.height = window.innerHeight;
+}
+
+/* =============================================
+   SYSTÈME DE VISÉE (BRAWL STARS STYLE)
+   ============================================= */
+function installAimControls() {
+    // Desktop - Souris
+    G.canvas.addEventListener('mousemove', (e) => {
+        if (!G.player) return;
+        const rect = G.canvas.getBoundingClientRect();
+        G.mouseX = e.clientX - rect.left;
+        G.mouseY = e.clientY - rect.top;
+        
+        const dx = G.mouseX - G.player.x;
+        const dy = G.mouseY - G.player.y;
+        G.aimAngle = Math.atan2(dy, dx);
+        G.aimDistance = Math.min(Math.sqrt(dx*dx + dy*dy), 200);
+    });
+
+    // Mobile - Touch sur le canvas pour viser
+    G.canvas.addEventListener('touchmove', (e) => {
+        if (!G.player) return;
+        e.preventDefault();
+        const rect = G.canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        G.mouseX = touch.clientX - rect.left;
+        G.mouseY = touch.clientY - rect.top;
+        
+        const dx = G.mouseX - G.player.x;
+        const dy = G.mouseY - G.player.y;
+        G.aimAngle = Math.atan2(dy, dx);
+        G.aimDistance = Math.min(Math.sqrt(dx*dx + dy*dy), 200);
+    }, { passive: false });
 }
 
 /* =============================================
@@ -685,9 +733,30 @@ function onMatchSnapshot(snap) {
         updateTimerUI();
     }
 
+    // Synchroniser les projectiles de l'adversaire
+    if (gs[oppK] && gs[oppK].projectiles) {
+        syncOpponentProjectiles(gs[oppK].projectiles);
+    }
+
     updateHpBars();
 
     if ((G.player.hp <= 0 || G.opponent.hp <= 0) && !G.matchEnded) handleMatchEnd();
+}
+
+function syncOpponentProjectiles(oppProjs) {
+    if (!oppProjs || oppProjs.length === 0) return;
+    
+    // Ajouter les nouveaux projectiles adverses
+    for (const proj of oppProjs) {
+        const exists = G.projectiles.some(p => p.id === proj.id && !p.isMine);
+        if (!exists) {
+            G.projectiles.push({
+                ...proj,
+                isMine: false,
+                isOpponent: true
+            });
+        }
+    }
 }
 
 /* =============================================
@@ -880,6 +949,51 @@ function update() {
     G.opponent.x += (G.opponent.targetX - G.opponent.x) * 0.2;
     G.opponent.y += (G.opponent.targetY - G.opponent.y) * 0.2;
 
+    // Update projectiles
+    for (let i = G.projectiles.length - 1; i >= 0; i--) {
+        const proj = G.projectiles[i];
+        proj.x += proj.vx;
+        proj.y += proj.vy;
+        proj.life--;
+
+        // Collision avec les bords
+        if (proj.x < 0 || proj.x > G.canvas.width || proj.y < 0 || proj.y > G.canvas.height) {
+            G.projectiles.splice(i, 1);
+            continue;
+        }
+
+        // Durée de vie
+        if (proj.life <= 0) {
+            G.projectiles.splice(i, 1);
+            continue;
+        }
+
+        // Collision avec l'adversaire (seulement pour mes projectiles)
+        if (proj.isMine) {
+            const dx = G.opponent.x - proj.x;
+            const dy = G.opponent.y - proj.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist < G.opponent.radius + 5) {
+                // HIT!
+                console.log('💥 PROJECTILE HIT!', proj.damage + 'dmg');
+                spawnHitParticles(proj.x, proj.y, proj.type);
+                flashHit(proj.type);
+                
+                // Appliquer dégâts
+                const oppK = G.isPlayer1 ? 'player2' : 'player1';
+                RTDB.ref(`active_matches/${G.matchId}/gameState/${oppK}/hp`).transaction(cur => {
+                    if (cur === null) return 0;
+                    return Math.max(0, cur - proj.damage);
+                });
+                
+                G.projectiles.splice(i, 1);
+                continue;
+            }
+        }
+    }
+
+    // Update particles
     for (let i = G.particles.length - 1; i >= 0; i--) {
         const p = G.particles[i];
         p.life--;
@@ -890,7 +1004,7 @@ function update() {
 }
 
 /* =============================================
-   ATTAQUE
+   ATTAQUE (AVEC PROJECTILES)
    ============================================= */
 function doAttack(type) {
     if (G.matchEnded || !G.player || !G.opponent) return;
@@ -903,25 +1017,54 @@ function doAttack(type) {
         G.lastSpeTime = now;
     }
 
-    const dx   = G.opponent.x - G.player.x;
-    const dy   = G.opponent.y - G.player.y;
-    const dist = Math.sqrt(dx*dx + dy*dy);
     const range  = type === 'normal' ? G.player.atkRange  : G.player.speRange;
     const damage = type === 'normal' ? G.player.atkDmg    : G.player.speDmg;
 
-    spawnAtkParticles(G.player.x, G.player.y, dx, dy, type);
+    // Créer projectile
+    const projSpeed = type === 'normal' ? 12 : 15;
+    const projId = Date.now() + '_' + Math.random();
+    
+    const projectile = {
+        id: projId,
+        x: G.player.x,
+        y: G.player.y,
+        vx: Math.cos(G.aimAngle) * projSpeed,
+        vy: Math.sin(G.aimAngle) * projSpeed,
+        damage: damage,
+        type: type,
+        color: type === 'special' ? '#FDCB6E' : G.player.color,
+        size: type === 'special' ? 8 : 6,
+        life: Math.ceil(range / projSpeed) + 10,
+        isMine: true
+    };
 
-    if (dist > range) return;
+    G.projectiles.push(projectile);
 
-    console.log('💥 HIT', type, damage + 'dmg');
-    flashHit(type);
-    spawnHitParticles(G.opponent.x, G.opponent.y, type);
+    // Particules de tir
+    spawnAtkParticles(G.player.x, G.player.y, 
+        Math.cos(G.aimAngle), Math.sin(G.aimAngle), type);
 
-    const oppK = G.isPlayer1 ? 'player2' : 'player1';
-    RTDB.ref(`active_matches/${G.matchId}/gameState/${oppK}/hp`).transaction(cur => {
-        if (cur === null) return 0;
-        return Math.max(0, cur - damage);
-    });
+    // Sync avec Firebase (pour que l'adversaire voie le projectile)
+    syncProjectilesToFirebase();
+
+    console.log('🎯 PROJECTILE LANCÉ', type, '→', G.aimAngle);
+}
+
+function syncProjectilesToFirebase() {
+    const myProjs = G.projectiles.filter(p => p.isMine).map(p => ({
+        id: p.id,
+        x: Math.round(p.x),
+        y: Math.round(p.y),
+        vx: p.vx,
+        vy: p.vy,
+        damage: p.damage,
+        type: p.type,
+        color: p.color,
+        size: p.size,
+        life: p.life
+    }));
+
+    RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}/projectiles`).set(myProjs);
 }
 
 /* =============================================
@@ -931,18 +1074,33 @@ function spawnAtkParticles(x, y, dx, dy, type) {
     const n = type === 'special' ? 7 : 3;
     const c = type === 'special' ? '#FDCB6E' : (G.player ? G.player.color : '#FF3366');
     for (let i = 0; i < n; i++) {
-        const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 1.1;
-        const s = 3 + Math.random() * 5;
-        G.particles.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 16, maxLife: 16, color: c, size: 2 + Math.random()*3 });
+        const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.8;
+        const s = 2 + Math.random() * 4;
+        G.particles.push({ 
+            x, y, 
+            vx: Math.cos(a)*s, 
+            vy: Math.sin(a)*s, 
+            life: 12, maxLife: 12, 
+            color: c, 
+            size: 2 + Math.random()*2 
+        });
     }
 }
+
 function spawnHitParticles(x, y, type) {
     const n = type === 'special' ? 16 : 8;
     const c = type === 'special' ? '#fff' : '#FFD700';
     for (let i = 0; i < n; i++) {
         const a = Math.random() * Math.PI * 2;
         const s = 2 + Math.random() * 6;
-        G.particles.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 20, maxLife: 20, color: c, size: 2 + Math.random()*4 });
+        G.particles.push({ 
+            x, y, 
+            vx: Math.cos(a)*s, 
+            vy: Math.sin(a)*s, 
+            life: 20, maxLife: 20, 
+            color: c, 
+            size: 2 + Math.random()*4 
+        });
     }
 }
 
@@ -956,14 +1114,50 @@ function render() {
     ctx.fillStyle = '#0F0F1E';
     ctx.fillRect(0, 0, W, H);
 
+    // Grille
     ctx.strokeStyle = 'rgba(255,255,255,0.04)';
     ctx.lineWidth = 1;
-    for (let x = 0; x < W; x += 48) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-    for (let y = 0; y < H; y += 48) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+    for (let x = 0; x < W; x += 48) { 
+        ctx.beginPath(); 
+        ctx.moveTo(x,0); 
+        ctx.lineTo(x,H); 
+        ctx.stroke(); 
+    }
+    for (let y = 0; y < H; y += 48) { 
+        ctx.beginPath(); 
+        ctx.moveTo(0,y); 
+        ctx.lineTo(W,y); 
+        ctx.stroke(); 
+    }
 
+    // Dessiner indicateur de visée (rangée d'attaque)
+    if (G.player) {
+        drawAimIndicator(ctx);
+    }
+
+    // Entités
     if (G.opponent) drawEntity(ctx, G.opponent);
     if (G.player) drawEntity(ctx, G.player);
 
+    // Projectiles
+    for (const proj of G.projectiles) {
+        ctx.save();
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = proj.color;
+        ctx.fillStyle = proj.color;
+        ctx.beginPath();
+        ctx.arc(proj.x, proj.y, proj.size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Trail effect
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        ctx.arc(proj.x - proj.vx * 1.5, proj.y - proj.vy * 1.5, proj.size * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // Particles
     for (const p of G.particles) {
         const alpha = p.life / p.maxLife;
         ctx.save();
@@ -978,7 +1172,64 @@ function render() {
     }
 }
 
+function drawAimIndicator(ctx) {
+    if (!G.player) return;
+
+    const range = G.player.atkRange;
+    
+    // Ligne de visée (subtile)
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(G.player.x, G.player.y);
+    ctx.lineTo(
+        G.player.x + Math.cos(G.aimAngle) * range,
+        G.player.y + Math.sin(G.aimAngle) * range
+    );
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Cercle de portée
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 51, 102, 0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(G.player.x, G.player.y, range, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Point de visée
+    const aimX = G.player.x + Math.cos(G.aimAngle) * Math.min(range, G.aimDistance);
+    const aimY = G.player.y + Math.sin(G.aimAngle) * Math.min(range, G.aimDistance);
+    
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 51, 102, 0.4)';
+    ctx.strokeStyle = '#FF3366';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(aimX, aimY, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Croix de visée
+    ctx.beginPath();
+    ctx.moveTo(aimX - 12, aimY);
+    ctx.lineTo(aimX - 4, aimY);
+    ctx.moveTo(aimX + 4, aimY);
+    ctx.lineTo(aimX + 12, aimY);
+    ctx.moveTo(aimX, aimY - 12);
+    ctx.lineTo(aimX, aimY - 4);
+    ctx.moveTo(aimX, aimY + 4);
+    ctx.lineTo(aimX, aimY + 12);
+    ctx.stroke();
+    ctx.restore();
+}
+
 function drawEntity(ctx, e) {
+    // Ombre
     ctx.save();
     ctx.globalAlpha = 0.2;
     ctx.fillStyle = '#000';
@@ -987,6 +1238,7 @@ function drawEntity(ctx, e) {
     ctx.fill();
     ctx.restore();
 
+    // Glow
     ctx.save();
     ctx.shadowBlur  = 28;
     ctx.shadowColor = e.glowColor || e.color;
@@ -996,6 +1248,7 @@ function drawEntity(ctx, e) {
     ctx.fill();
     ctx.restore();
 
+    // Corps
     ctx.fillStyle = e.color;
     ctx.beginPath();
     ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
@@ -1004,11 +1257,21 @@ function drawEntity(ctx, e) {
     ctx.strokeStyle = 'rgba(255,255,255,0.3)';
     ctx.lineWidth = 2;
     ctx.stroke();
+
+    // Emoji au centre
+    if (e.emoji) {
+        ctx.save();
+        ctx.font = (e.radius * 1.2) + 'px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(e.emoji, e.x, e.y);
+        ctx.restore();
+    }
 }
 
 function flashHit(type) {
     G.ctx.save();
-    G.ctx.globalAlpha = type === 'special' ? 0.25 : 0.16;
+    G.ctx.globalAlpha = type === 'special' ? 0.15 : 0.1;
     G.ctx.fillStyle   = type === 'special' ? '#FDCB6E' : '#FF3366';
     G.ctx.fillRect(0, 0, G.canvas.width, G.canvas.height);
     G.ctx.restore();
@@ -1177,6 +1440,7 @@ function cleanupGame() {
     stopCooldownUI();
     G.keys = {};
     G.particles = [];
+    G.projectiles = [];
 }
 
 function fullCleanup() {
@@ -1192,4 +1456,4 @@ function fullCleanup() {
 
 window.addEventListener('beforeunload', fullCleanup);
 
-console.log('🎮 WARSLIGUE — Version avec boutique chargée !');
+console.log('🎮 WARSLIGUE — Version avec visée Brawl Stars chargée !');
