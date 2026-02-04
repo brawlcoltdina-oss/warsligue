@@ -48,7 +48,7 @@ const CHEST_TYPES = {
         rewards: {
             gold: { min: 200, max: 500 },
             powerPoints: { min: 60, max: 150 },
-            characterChance: 0.15 // 15% chance
+            characterChance: 0.099 // 9.9% chance
         }
     }
 };
