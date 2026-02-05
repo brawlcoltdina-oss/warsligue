@@ -1,5 +1,5 @@
 // ==========================================
-// WARSLIGUE — java.js  (VERSION COFFRES CORRIGÉS ✅✅✅)
+// WARSLIGUE — java.js  (VERSION AVEC COFFRES BRAWL STARS)
 // ==========================================
 
 /* =============================================
@@ -20,13 +20,9 @@ const AUTH = firebase.auth();
 const FSDB = firebase.firestore();
 const RTDB = firebase.database();
 
-// ==========================================
-// PATCH POUR java.js - AJOUTER matchNotificationListener
-// ==========================================
-
-// Dans java.js, trouve la section "ÉTAT GLOBAL" (ligne ~25)
-// Et REMPLACE l'objet G par celui-ci :
-
+/* =============================================
+   ÉTAT GLOBAL
+   ============================================= */
 const G = {
     user: null,
     playerData: null,
@@ -38,7 +34,6 @@ const G = {
     mmSearchTimer: null,
     mmCountdownId: null,
     mmSeconds: 0,
-    matchNotificationListener: null,  // ← AJOUTE CETTE LIGNE
 
     matchId: null,
     isPlayer1: false,
@@ -84,14 +79,22 @@ const G = {
     touchAimId: null
 };
 
-// Si tu as un message d'erreur "G is not defined" dans matchmaking.js,
-// c'est parce que matchmaking.js est chargé avant java.js
-// 
-// VÉRIFIE l'ordre des scripts dans index.html :
-// <script src="character.js"></script>
-// <script src="rewards-gold.js"></script>
-// <script src="java.js"></script>        ← DOIT ÊTRE AVANT matchmaking.js
-// <script src="matchmaking.js"></script>  ← DOIT ÊTRE APRÈS java.js
+/* =============================================
+   UTILS
+   ============================================= */
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+function showError(msg) {
+    const el = document.getElementById('auth-error');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._ht);
+    el._ht = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
 /* =============================================
    LOADING SCREEN
    ============================================= */
@@ -132,7 +135,7 @@ document.getElementById('register-btn').addEventListener('click', async () => {
         await FSDB.collection('players').doc(user.uid).set({
             username, email, 
             trophies: 0, 
-            gold: 500, 
+            gold: 100, 
             wins: 0, 
             losses: 0, 
             totalMatches: 0,
@@ -189,7 +192,7 @@ async function ensurePlayerDoc(user) {
             username: 'Joueur_' + user.uid.slice(0,6),
             email: user.email || '',
             trophies: 0,
-            gold: 500,
+            gold: 100,
             wins: 0,
             losses: 0,
             totalMatches: 0,
@@ -209,7 +212,7 @@ async function ensurePlayerDoc(user) {
             updates.ownedSkins = [];
         }
         if (data.gold === undefined) {
-            updates.gold = 500;
+            updates.gold = 100;
         }
         if (!data.powerPoints) {
             updates.powerPoints = {};
@@ -346,55 +349,27 @@ function openCharacterPanel() {
 function closeCharacterPanel() {
     document.getElementById('character-selection-panel').classList.remove('active');
 }
-// ==========================================
-// VERSION ULTRA SIMPLE - AVEC ONCLICK INLINE
-// Remplace TOUTE la section CHESTS dans java.js
-// ==========================================
 
 /* =============================================
-   🔥 CHESTS SYSTEM - VERSION ONCLICK INLINE
+   CHESTS SYSTEM
    ============================================= */
-
-// Variable globale pour stocker la fonction
-window.handleChestClick = function(chestKey) {
-    console.log('');
-    console.log('════════════════════════════════════');
-    console.log('🔥 ONCLICK INLINE DÉCLENCHÉ !');
-    console.log('📦 Coffre:', chestKey);
-    console.log('════════════════════════════════════');
-    buyChest(chestKey);
-};
-
-document.getElementById('chests-btn').addEventListener('click', () => {
-    console.log('🎯 Bouton COFFRES cliqué');
-    openChests();
-});
-
-document.getElementById('close-chests').addEventListener('click', () => {
-    console.log('❌ Fermeture coffres');
-    showScreen('main-menu');
-});
+document.getElementById('chests-btn').addEventListener('click', openChests);
+document.getElementById('close-chests').addEventListener('click', () => showScreen('main-menu'));
 
 async function openChests() {
-    console.log('📦 Ouverture écran coffres');
-    console.log('💰 Gold actuel:', G.playerData?.gold);
-    
     showScreen('chests-screen');
     document.getElementById('chests-gold').textContent = G.playerData ? (G.playerData.gold || 0) : 0;
     renderChestsGrid();
 }
 
 function renderChestsGrid() {
-    console.log('🎨 Rendu des coffres...');
     const grid = document.getElementById('chests-grid');
     grid.innerHTML = '';
     
     const playerGold = G.playerData?.gold || 0;
-    console.log('💰 Or disponible pour achats:', playerGold);
     
     for (const [key, chest] of Object.entries(CHEST_TYPES)) {
         const canAfford = playerGold >= chest.price;
-        console.log(`📦 ${chest.name}: Prix ${chest.price} | Peut acheter: ${canAfford}`);
         
         const card = document.createElement('div');
         card.className = `shop-item ${!canAfford ? 'locked' : ''}`;
@@ -403,7 +378,6 @@ function renderChestsGrid() {
             background: linear-gradient(135deg, ${chest.color}10, ${chest.color}05);
         `;
         
-        // 🔥 CHANGEMENT ICI : onclick INLINE dans le HTML
         card.innerHTML = `
             <div class="shop-item-icon" style="font-size: 4rem; filter: drop-shadow(0 0 15px ${chest.glowColor});">
                 ${chest.emoji}
@@ -418,94 +392,47 @@ function renderChestsGrid() {
                 <span>💰</span>
                 <span>${chest.price}</span>
             </div>
-            <button 
-                class="shop-item-btn ${!canAfford ? 'btn-disabled' : ''}" 
-                ${!canAfford ? 'disabled' : ''}
-                onclick="window.handleChestClick('${key}')"
-                style="cursor: pointer; pointer-events: auto; position: relative; z-index: 999;">
-                ${canAfford ? 'ACHETER' : 'Pas assez de 💰'}
+            <button class="shop-item-btn" ${!canAfford ? 'disabled' : ''} onclick="buyChest('${key}')">
+                ${canAfford ? 'Acheter' : 'Pas assez de 💰'}
             </button>
         `;
         
         grid.appendChild(card);
     }
-    
-    console.log('✅ Grille de coffres rendue avec onclick inline');
 }
 
 async function buyChest(chestKey) {
-    console.log('');
-    console.log('════════════════════════════════════');
-    console.log('🛒 FONCTION buyChest() APPELÉE');
-    console.log('📦 Coffre:', chestKey);
-    console.log('════════════════════════════════════');
-    
-    if (!G.user) {
-        console.error('❌ Pas de user:', G.user);
-        showError('Vous devez être connecté');
-        return;
-    }
-    
-    if (!G.playerData) {
-        console.error('❌ Pas de playerData:', G.playerData);
-        showError('Données joueur non chargées');
-        return;
-    }
+    if (!G.user || !G.playerData) return;
     
     const chest = CHEST_TYPES[chestKey];
-    if (!chest) {
-        console.error('❌ Coffre inconnu:', chestKey);
-        showError('Coffre introuvable');
-        return;
-    }
-    
-    console.log('📦 Coffre trouvé:', chest.name);
-    
     const currentGold = G.playerData.gold || 0;
-    console.log('💰 Or actuel:', currentGold);
-    console.log('💵 Prix coffre:', chest.price);
     
     if (currentGold < chest.price) {
-        console.warn('⚠️ Pas assez d\'or!');
         showError('Pas assez de pièces !');
         return;
     }
     
     try {
-        console.log('💳 Début transaction...');
-        
         // Déduire le prix
         await FSDB.collection('players').doc(G.user.uid).update({
             gold: currentGold - chest.price
         });
         
-        console.log('✅ Paiement effectué!');
-        console.log('🎬 Lancement animation...');
-        
-        // Ouvrir le coffre avec animation
-        openChestAnimation(chestKey);
+        // Ouvrir le coffre
+        await openChestAnimation(chestKey);
         
     } catch (e) {
-        console.error('❌ ERREUR:', e);
-        showError('Erreur: ' + e.message);
+        console.error('❌ Achat coffre:', e);
+        showError('Erreur lors de l\'achat');
     }
 }
 
-function openChestAnimation(chestKey) {
-    console.log('🎬 openChestAnimation() - Début');
-    
+async function openChestAnimation(chestKey) {
     const chest = CHEST_TYPES[chestKey];
     const modal = document.getElementById('reward-modal');
     const opening = document.getElementById('chest-opening');
     const result = document.getElementById('reward-result');
     const chestIcon = document.getElementById('opening-chest-icon');
-    
-    console.log('🎭 Elements:', {
-        modal: !!modal,
-        opening: !!opening,
-        result: !!result,
-        chestIcon: !!chestIcon
-    });
     
     // Afficher le modal
     modal.classList.add('active');
@@ -515,102 +442,438 @@ function openChestAnimation(chestKey) {
     // Animer le coffre
     chestIcon.textContent = chest.emoji;
     chestIcon.style.fontSize = '6rem';
-    chestIcon.style.filter = `drop-shadow(0 0 40px ${chest.glowColor})`;
+    chestIcon.style.animation = 'chestShake 0.8s ease-in-out infinite';
     
-    console.log('⏰ Attente 2 secondes...');
+    // Attendre 2 secondes
+    await new Promise(r => setTimeout(r, 2000));
     
-    // Attendre 2 secondes puis générer et afficher la récompense
-    setTimeout(() => {
-        console.log('🎲 Génération récompense...');
-        
-        // Générer la récompense
-        const reward = generateChestReward(chestKey, G.playerData);
-        console.log('🎁 Récompense:', reward);
-        
-        // Appliquer la récompense
-        applyChestReward(reward).then(() => {
-            console.log('✅ Récompense appliquée');
-            displayChestReward(reward, chest);
-        }).catch(err => {
-            console.error('❌ Erreur application:', err);
-            showError('Erreur récompense');
-        });
-    }, 2000);
+    // Générer la récompense
+    const reward = generateChestReward(chestKey, G.playerData);
+    
+    // Appliquer la récompense
+    await applyChestReward(reward);
+    
+    // Afficher le résultat
+    displayChestReward(reward, chest);
 }
 
 async function applyChestReward(reward) {
-    console.log('💾 Application récompense...');
-    
     const updates = {
         gold: firebase.firestore.FieldValue.increment(reward.gold)
     };
     
     if (reward.character && reward.isNew) {
-        console.log('🆕 Nouveau personnage:', reward.character);
         updates.ownedCharacters = firebase.firestore.FieldValue.arrayUnion(reward.character);
     }
     
+    // Ajouter les power points au personnage (simplifié pour l'instant)
+    
     await FSDB.collection('players').doc(G.user.uid).update(updates);
-    console.log('✅ Mise à jour Firebase OK');
 }
 
 function displayChestReward(reward, chest) {
-    console.log('🎨 Affichage récompense...');
-    
     const opening = document.getElementById('chest-opening');
     const result = document.getElementById('reward-result');
     const rewardItem = document.getElementById('reward-item');
     const goldDisplay = document.getElementById('reward-gold-display');
     
-    // Masquer l'animation, afficher le résultat
     opening.style.display = 'none';
     result.style.display = 'block';
     
-    // Afficher le personnage si nouveau
     if (reward.character && reward.isNew) {
         const char = CHARACTERS[reward.character];
-        if (char) {
-            console.log('🎊 Affichage nouveau personnage:', char.name);
-            rewardItem.style.display = 'block';
-            
-            document.getElementById('reward-rarity').textContent = (char.rarity || 'COMMON').toUpperCase();
-            document.getElementById('reward-rarity').className = `reward-rarity-badge rarity-${char.rarity || 'common'}`;
-            
-            document.getElementById('reward-icon').textContent = char.emoji;
-            document.getElementById('reward-icon').style.background = char.color;
-            document.getElementById('reward-icon').style.boxShadow = `0 0 40px ${char.glowColor}`;
-            
-            document.getElementById('reward-name').textContent = char.name;
-            document.getElementById('reward-status').textContent = 'NOUVEAU !';
-            document.getElementById('reward-status').style.color = '#2ECC71';
-        }
+        rewardItem.style.display = 'block';
+        
+        document.getElementById('reward-rarity').textContent = char.rarity.toUpperCase();
+        document.getElementById('reward-rarity').className = `reward-rarity-badge rarity-${char.rarity}`;
+        
+        document.getElementById('reward-icon').textContent = char.emoji;
+        document.getElementById('reward-icon').style.background = char.color;
+        document.getElementById('reward-icon').style.boxShadow = `0 0 40px ${char.glowColor}`;
+        
+        document.getElementById('reward-name').textContent = char.name;
+        document.getElementById('reward-status').textContent = 'NOUVEAU !';
+        document.getElementById('reward-status').style.color = '#2ECC71';
     } else {
         rewardItem.style.display = 'none';
-        console.log('💰 Pas de nouveau personnage');
     }
     
     goldDisplay.textContent = `+${reward.gold} 💰 | +${reward.powerPoints} ⚡`;
-    goldDisplay.style.display = 'block';
-    
-    console.log('✅ Récompense affichée');
 }
 
-// Bouton récupérer
 document.getElementById('claim-reward-btn').addEventListener('click', () => {
-    console.log('✅ Récupération récompense');
     document.getElementById('reward-modal').classList.remove('active');
     renderChestsGrid();
-    renderCharacterSelector();
 });
 
-// Overlay
 document.getElementById('reward-overlay').addEventListener('click', () => {
-    console.log('❌ Fermeture modal via overlay');
     document.getElementById('reward-modal').classList.remove('active');
     renderChestsGrid();
 });
 
-console.log('✅ Système de coffres ONCLICK INLINE chargé');
+
+/* =============================================
+   MATCHMAKING
+   ============================================= */
+document.getElementById('play-btn').addEventListener('click', startMatchmaking);
+document.getElementById('cancel-matchmaking').addEventListener('click', cancelMatchmaking);
+
+async function startMatchmaking() {
+    if (!G.playerData) return;
+    showScreen('matchmaking-screen');
+    document.getElementById('mm-trophies').textContent = G.playerData.trophies || 0;
+
+    G.mmSeconds = 0;
+    document.getElementById('mm-timer').textContent = '0s';
+    G.mmCountdownId = setInterval(() => {
+        G.mmSeconds++;
+        document.getElementById('mm-timer').textContent = G.mmSeconds + 's';
+    }, 1000);
+
+    try {
+        const ref = RTDB.ref('matchmaking_queue').push();
+        G.myQueueKey = ref.key;
+        await ref.set({
+            uid: G.user.uid,
+            username: G.playerData.username,
+            trophies: G.playerData.trophies || 0,
+            character: G.selectedChar,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+        ref.onDisconnect().remove();
+
+        console.log('🔍 Recherche adversaire... (Trophées:', G.playerData.trophies || 0, ')');
+
+        G.mmChildListenerRef = RTDB.ref('active_matches');
+        G.mmChildListener = (snap) => {
+            const m = snap.val();
+            if (!m) return;
+            console.log('📢 Match détecté:', snap.key);
+            if (m.player1Uid === G.user.uid || m.player2Uid === G.user.uid) {
+                console.log('✅ C\'est notre match !');
+                stopMatchmaking();
+                enterMatch(snap.key, m);
+            }
+        };
+        G.mmChildListenerRef.limitToLast(1).on('child_added', G.mmChildListener);
+
+        scheduleSearch();
+    } catch (e) {
+        console.error('❌ MM:', e);
+        stopMatchmaking();
+        showScreen('main-menu');
+    }
+}
+
+function scheduleSearch() {
+    if (!G.myQueueKey) return;
+    G.mmSearchTimer = setTimeout(async () => {
+        if (!G.myQueueKey) return;
+        await tryPairMatch();
+        scheduleSearch();
+    }, 2000);
+}
+
+async function tryPairMatch() {
+    if (!G.myQueueKey) return;
+    
+    try {
+        const queueSnap = await RTDB.ref('matchmaking_queue').once('value');
+        const queue = queueSnap.val();
+        
+        if (!queue || !queue[G.myQueueKey]) {
+            console.log('⚠️ Plus dans la queue');
+            return;
+        }
+
+        const myTrophies = G.playerData.trophies || 0;
+        
+        let bestOpponent = null;
+        let bestKey = null;
+        let bestDiff = Infinity;
+        
+        for (const [key, player] of Object.entries(queue)) {
+            if (key === G.myQueueKey) continue;
+            if (!player || !player.uid) continue;
+            
+            const diff = Math.abs((player.trophies || 0) - myTrophies);
+            if (diff <= 250 && diff < bestDiff) {
+                bestDiff = diff;
+                bestOpponent = player;
+                bestKey = key;
+            }
+        }
+        
+        if (!bestOpponent || !bestKey) {
+            console.log('🔍 Pas d\'adversaire (Δ trophées > 250)');
+            return;
+        }
+        
+        console.log('🎯 Adversaire trouvé:', bestOpponent.username, '| Δ', bestDiff, 'trophées');
+        
+        const matchKey = RTDB.ref('active_matches').push().key;
+        const myCharKey = G.selectedChar;
+        const oppCharKey = bestOpponent.character || 'warrior';
+        const myChar = CHARACTERS[myCharKey] || CHARACTERS.warrior;
+        const oppChar = CHARACTERS[oppCharKey] || CHARACTERS.warrior;
+        
+        const updates = {};
+        updates[`matchmaking_queue/${G.myQueueKey}`] = null;
+        updates[`matchmaking_queue/${bestKey}`] = null;
+        updates[`active_matches/${matchKey}`] = {
+            player1Uid: G.user.uid,
+            player2Uid: bestOpponent.uid,
+            player1Username: G.playerData.username,
+            player2Username: bestOpponent.username,
+            player1Char: myCharKey,
+            player2Char: oppCharKey,
+            status: 'active',
+            timeLeft: 180,
+            createdAt: firebase.database.ServerValue.TIMESTAMP,
+            gameState: {
+                player1: { x: 80, y: 400, hp: myChar.hp },
+                player2: { x: 720, y: 400, hp: oppChar.hp }
+            }
+        };
+        
+        await RTDB.ref().update(updates);
+        console.log('✅ Match créé:', matchKey);
+        
+    } catch (e) {
+        console.error('❌ tryPairMatch:', e);
+    }
+}
+
+function stopMatchmaking() {
+    clearTimeout(G.mmSearchTimer);   G.mmSearchTimer  = null;
+    clearInterval(G.mmCountdownId);  G.mmCountdownId  = null;
+    if (G.mmChildListenerRef && G.mmChildListener) {
+        G.mmChildListenerRef.off('child_added', G.mmChildListener);
+        console.log('🔌 Listener MM détaché');
+    }
+    G.mmChildListener    = null;
+    G.mmChildListenerRef = null;
+    G.myQueueKey         = null;
+}
+
+async function cancelMatchmaking() {
+    const key = G.myQueueKey;
+    stopMatchmaking();
+    if (key) {
+        try {
+            await RTDB.ref('matchmaking_queue/' + key).remove();
+            console.log('❌ Annulation MM');
+        } catch (e) {
+            console.error('Erreur annulation:', e);
+        }
+    }
+    showScreen('main-menu');
+}
+
+/* =============================================
+   ENTRER DANS LE MATCH
+   ============================================= */
+function enterMatch(matchId, matchData) {
+    console.log('🎮 Match:', matchId);
+    G.matchId    = matchId;
+    G.isPlayer1  = (matchData.player1Uid === G.user.uid);
+    G.matchEnded = false;
+
+    document.getElementById('player-game-name').textContent   = G.isPlayer1 ? matchData.player1Username : matchData.player2Username;
+    document.getElementById('opponent-game-name').textContent = G.isPlayer1 ? matchData.player2Username : matchData.player1Username;
+
+    showScreen('game-screen');
+    initGame(matchData);
+
+    RTDB.ref(`active_matches/${matchId}`).onDisconnect().remove();
+
+    if (G.isPlayer1) startServerTimer();
+}
+
+/* =============================================
+   INIT GAME
+   ============================================= */
+function initGame(matchData) {
+    G.canvas = document.getElementById('game-canvas');
+    G.ctx    = G.canvas.getContext('2d');
+    resizeCanvas();
+
+    if (G.resizeFn) window.removeEventListener('resize', G.resizeFn);
+    G.resizeFn = resizeCanvas;
+    window.addEventListener('resize', G.resizeFn);
+
+    const myKey  = G.isPlayer1 ? matchData.player1Char : matchData.player2Char;
+    const oppKey = G.isPlayer1 ? matchData.player2Char : matchData.player1Char;
+    const myC    = CHARACTERS[myKey]  || CHARACTERS.warrior;
+    const oppC   = CHARACTERS[oppKey] || CHARACTERS.warrior;
+
+    G.player = {
+        x: G.isPlayer1 ? 80 : G.canvas.width - 80,
+        y: G.canvas.height / 2,
+        hp: myC.hp, maxHp: myC.hp,
+        radius: myC.radius, color: myC.color, glowColor: myC.glowColor,
+        speed: myC.speed,
+        atkDmg: myC.attackDamage, atkRange: myC.attackRange, atkCd: myC.attackCooldown,
+        speDmg: myC.specialDamage, speRange: myC.specialRange, speCd: myC.specialCooldown,
+        emoji: myC.emoji
+    };
+
+    G.opponent = {
+        x: G.isPlayer1 ? G.canvas.width - 80 : 80,
+        y: G.canvas.height / 2,
+        targetX: G.isPlayer1 ? G.canvas.width - 80 : 80,
+        targetY: G.canvas.height / 2,
+        hp: oppC.hp, maxHp: oppC.hp,
+        radius: oppC.radius, color: oppC.color, glowColor: oppC.glowColor,
+        emoji: oppC.emoji
+    };
+
+    G.gameTime    = 180;
+    G.matchEnded  = false;
+    G.particles   = [];
+    G.projectiles = [];
+    G.lastAtkTime = 0;
+    G.lastSpeTime = 0;
+    G.lastPosSend = 0;
+
+    G.isAiming = false;
+    G.aimAngle = 0;
+
+    RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}`).update({
+        y: Math.round(G.canvas.height / 2)
+    });
+
+    if (G.matchListenerRef && G.matchListenerCb) {
+        G.matchListenerRef.off('value', G.matchListenerCb);
+    }
+    G.matchListenerCb  = onMatchSnapshot;
+    G.matchListenerRef = RTDB.ref(`active_matches/${G.matchId}`);
+    G.matchListenerRef.on('value', G.matchListenerCb);
+
+    installKeyboard();
+    installMobile();
+    installAimControls();
+
+    if (G.rafId) cancelAnimationFrame(G.rafId);
+    G.rafId = requestAnimationFrame(gameLoop);
+
+    startCooldownUI();
+    updateTimerUI();
+    updateHpBars();
+    console.log('🎯 Game init. P1:', G.isPlayer1);
+}
+
+function resizeCanvas() {
+    if (!G.canvas) return;
+    G.canvas.width  = window.innerWidth;
+    G.canvas.height = window.innerHeight;
+}
+
+
+/* =============================================
+   SYSTÈME DE VISÉE (BRAWL STARS STYLE)
+   ============================================= */
+function installAimControls() {
+    G.canvas.addEventListener('mousemove', (e) => {
+        if (!G.player) return;
+        const rect = G.canvas.getBoundingClientRect();
+        G.mouseX = e.clientX - rect.left;
+        G.mouseY = e.clientY - rect.top;
+        
+        const dx = G.mouseX - G.player.x;
+        const dy = G.mouseY - G.player.y;
+        G.aimAngle = Math.atan2(dy, dx);
+        G.aimDistance = Math.min(Math.sqrt(dx*dx + dy*dy), 200);
+    });
+
+    G.canvas.addEventListener('touchmove', (e) => {
+        if (!G.player) return;
+        e.preventDefault();
+        const rect = G.canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        G.mouseX = touch.clientX - rect.left;
+        G.mouseY = touch.clientY - rect.top;
+        
+        const dx = G.mouseX - G.player.x;
+        const dy = G.mouseY - G.player.y;
+        G.aimAngle = Math.atan2(dy, dx);
+        G.aimDistance = Math.min(Math.sqrt(dx*dx + dy*dy), 200);
+    }, { passive: false });
+}
+
+/* =============================================
+   FIREBASE SNAPSHOT
+   ============================================= */
+function onMatchSnapshot(snap) {
+    const data = snap.val();
+    if (!data) return;
+    if (data.status === 'finished' && !G.matchEnded) { handleMatchEnd(); return; }
+
+    const gs = data.gameState;
+    if (!gs) return;
+
+    const oppK = G.isPlayer1 ? 'player2' : 'player1';
+    const myK  = G.isPlayer1 ? 'player1' : 'player2';
+
+    if (gs[oppK]) {
+        G.opponent.targetX = gs[oppK].x || G.opponent.targetX;
+        G.opponent.targetY = gs[oppK].y || G.opponent.targetY;
+        G.opponent.hp      = gs[oppK].hp !== undefined ? gs[oppK].hp : G.opponent.hp;
+    }
+    if (gs[myK]) {
+        G.player.hp = gs[myK].hp !== undefined ? gs[myK].hp : G.player.hp;
+    }
+    if (data.timeLeft !== undefined) {
+        G.gameTime = data.timeLeft;
+        updateTimerUI();
+    }
+
+    if (gs[oppK] && gs[oppK].projectiles) {
+        syncOpponentProjectiles(gs[oppK].projectiles);
+    }
+
+    updateHpBars();
+
+    if ((G.player.hp <= 0 || G.opponent.hp <= 0) && !G.matchEnded) handleMatchEnd();
+}
+
+function syncOpponentProjectiles(oppProjs) {
+    if (!oppProjs || oppProjs.length === 0) return;
+    
+    for (const proj of oppProjs) {
+        const exists = G.projectiles.some(p => p.id === proj.id && !p.isMine);
+        if (!exists) {
+            G.projectiles.push({
+                ...proj,
+                isMine: false,
+                isOpponent: true
+            });
+        }
+    }
+}
+
+/* =============================================
+   SERVER TIMER
+   ============================================= */
+function startServerTimer() {
+    if (G.timerIntervalId) return;
+    G.timerIntervalId = setInterval(() => {
+        if (G.matchEnded || !G.matchId) {
+            clearInterval(G.timerIntervalId); G.timerIntervalId = null; return;
+        }
+        RTDB.ref(`active_matches/${G.matchId}/timeLeft`).transaction(val => {
+            if (val === null) return null;
+            const next = val - 1;
+            if (next <= 0) {
+                setTimeout(() => {
+                    if (!G.matchEnded) RTDB.ref(`active_matches/${G.matchId}/status`).set('finished');
+                }, 50);
+                return 0;
+            }
+            return next;
+        });
+    }, 1000);
+}
 
 /* =============================================
    TIMER + HP UI
@@ -1267,4 +1530,4 @@ function fullCleanup() {
 
 window.addEventListener('beforeunload', fullCleanup);
 
-console.log('🎮 WARSLIGUE — Version COFFRES 100% FONCTIONNELS ✅✅✅');
+console.log('🎮 WARSLIGUE — Version avec Coffres Brawl Stars chargée !');
