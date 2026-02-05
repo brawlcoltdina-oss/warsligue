@@ -1,12 +1,12 @@
 // ==========================================
-// WARSLIGUE — CHARACTERS & SHOP DATA (DÉBLOQUABLES PAR COFFRES)
-// Les trophées ne sont PAS une monnaie, seulement les pièces (gold)
+// WARSLIGUE — CHARACTERS & SHOP DATA (AVEC IMAGES SVG)
 // ==========================================
 
 const CHARACTERS = {
     warrior: {
         name: "Warrior",
         emoji: "⚔️",
+        image: "Group 1 (1).svg",
         hp: 100,
         speed: 5,
         attackDamage: 10,
@@ -25,6 +25,7 @@ const CHARACTERS = {
     assassin: {
         name: "Assassin",
         emoji: "🗡️",
+        image: "Group 2.svg",
         hp: 75,
         speed: 8,
         attackDamage: 14,
@@ -43,6 +44,7 @@ const CHARACTERS = {
     mage: {
         name: "Mage",
         emoji: "🔮",
+        image: "Group 9.svg",
         hp: 80,
         speed: 4,
         attackDamage: 12,
@@ -61,6 +63,7 @@ const CHARACTERS = {
     tank: {
         name: "Tank",
         emoji: "🛡️",
+        image: "Group 5.svg",
         hp: 150,
         speed: 3,
         attackDamage: 8,
@@ -80,6 +83,7 @@ const CHARACTERS = {
     ninja: {
         name: "Ninja",
         emoji: "🥷",
+        image: "Group 4.svg",
         hp: 65,
         speed: 10,
         attackDamage: 16,
@@ -99,6 +103,7 @@ const CHARACTERS = {
     necromancer: {
         name: "Necromancer",
         emoji: "💀",
+        image: "Group 7.svg",
         hp: 70,
         speed: 4,
         attackDamage: 15,
@@ -118,6 +123,7 @@ const CHARACTERS = {
     paladin: {
         name: "Paladin",
         emoji: "⚜️",
+        image: "Group 8.svg",
         hp: 120,
         speed: 5,
         attackDamage: 12,
@@ -137,6 +143,7 @@ const CHARACTERS = {
     dragon: {
         name: "Dragon Knight",
         emoji: "🐉",
+        image: "Group 10.svg",
         hp: 140,
         speed: 6,
         attackDamage: 18,

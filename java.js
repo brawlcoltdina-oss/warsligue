@@ -247,9 +247,7 @@ function updateMenuUI() {
     document.getElementById('player-avatar').textContent   = G.playerData.username[0].toUpperCase();
 }
 
-/* =============================================
-   CHARACTER SELECTION (BRAWL STARS STYLE)
-   ============================================= */
+// Trouve la fonction renderCharacterSelector et remplace-la par celle-ci :
 function renderCharacterSelector() {
     const container = document.getElementById('character-selector');
     if (!container) return;
@@ -273,7 +271,7 @@ function renderCharacterSelector() {
         card.innerHTML = `
             <div class="brawler-card-inner">
                 <div class="brawler-icon" style="background: ${char.color}; box-shadow: 0 0 20px ${char.glowColor};">
-                    ${char.emoji}
+                    <img src="${char.image}" alt="${char.name}" style="width: 90%; height: 90%; object-fit: contain;">
                 </div>
                 <div class="brawler-name">${char.name}</div>
                 ${!owned ? '<div class="brawler-lock">🔒</div>' : ''}
@@ -289,6 +287,7 @@ function renderCharacterSelector() {
     }
 }
 
+// Trouve la fonction updateCharacterPreview et remplace-la par celle-ci :
 function updateCharacterPreview(charKey) {
     const char = CHARACTERS[charKey] || CHARACTERS.warrior;
     
@@ -299,7 +298,7 @@ function updateCharacterPreview(charKey) {
     const previewDamage = document.getElementById('preview-damage');
     
     if (previewIcon) {
-        previewIcon.textContent = char.emoji;
+        previewIcon.innerHTML = `<img src="${char.image}" alt="${char.name}" style="width: 80%; height: 80%; object-fit: contain;">`;
         previewIcon.style.background = char.color;
         previewIcon.style.boxShadow = `0 0 40px ${char.glowColor}`;
     }
@@ -310,29 +309,131 @@ function updateCharacterPreview(charKey) {
     if (previewDamage) previewDamage.textContent = char.attackDamage;
 }
 
-function selectCharacter(key) {
-    if (!CHARACTERS[key]) return;
-    
-    const ownedChars = G.playerData?.ownedCharacters || ['warrior', 'assassin', 'mage'];
-    if (!ownedChars.includes(key)) return;
-    
-    G.selectedChar = key;
-    updateCharacterPreview(key);
-    highlightChar(key);
-    
-    if (G.user) {
-        FSDB.collection('players').doc(G.user.uid).update({ selectedCharacter: key });
+// Trouve la fonction drawEntity et remplace la partie emoji par celle-ci :
+function drawEntity(ctx, e) {
+    ctx.save();
+    ctx.globalAlpha = 0.2;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y + e.radius - 3, e.radius * 0.82, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.shadowBlur  = 28;
+    ctx.shadowColor = e.glowColor || e.color;
+    ctx.fillStyle   = e.color;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = e.color;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Affichage de l'image SVG à la place de l'emoji
+    if (e.image && e.img && e.img.complete) {
+        ctx.save();
+        const size = e.radius * 1.6;
+        ctx.drawImage(e.img, e.x - size/2, e.y - size/2, size, size);
+        ctx.restore();
+    } else if (e.emoji) {
+        ctx.save();
+        ctx.font = (e.radius * 1.2) + 'px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(e.emoji, e.x, e.y);
+        ctx.restore();
     }
-    
-    setTimeout(() => {
-        closeCharacterPanel();
-    }, 500);
 }
 
-function highlightChar(key) {
-    document.querySelectorAll('.brawler-card').forEach(c => {
-        c.classList.toggle('selected', c.dataset.char === key);
+// Dans la fonction initGame, après la création de G.player et G.opponent, ajoute :
+function initGame(matchData) {
+    G.canvas = document.getElementById('game-canvas');
+    G.ctx    = G.canvas.getContext('2d');
+    resizeCanvas();
+
+    if (G.resizeFn) window.removeEventListener('resize', G.resizeFn);
+    G.resizeFn = resizeCanvas;
+    window.addEventListener('resize', G.resizeFn);
+
+    const myKey  = G.isPlayer1 ? matchData.player1Char : matchData.player2Char;
+    const oppKey = G.isPlayer1 ? matchData.player2Char : matchData.player1Char;
+    const myC    = CHARACTERS[myKey]  || CHARACTERS.warrior;
+    const oppC   = CHARACTERS[oppKey] || CHARACTERS.warrior;
+
+    G.player = {
+        x: G.isPlayer1 ? 80 : G.canvas.width - 80,
+        y: G.canvas.height / 2,
+        hp: myC.hp, maxHp: myC.hp,
+        radius: myC.radius, color: myC.color, glowColor: myC.glowColor,
+        speed: myC.speed,
+        atkDmg: myC.attackDamage, atkRange: myC.attackRange, atkCd: myC.attackCooldown,
+        speDmg: myC.specialDamage, speRange: myC.specialRange, speCd: myC.specialCooldown,
+        emoji: myC.emoji,
+        image: myC.image
+    };
+
+    G.opponent = {
+        x: G.isPlayer1 ? G.canvas.width - 80 : 80,
+        y: G.canvas.height / 2,
+        targetX: G.isPlayer1 ? G.canvas.width - 80 : 80,
+        targetY: G.canvas.height / 2,
+        hp: oppC.hp, maxHp: oppC.hp,
+        radius: oppC.radius, color: oppC.color, glowColor: oppC.glowColor,
+        emoji: oppC.emoji,
+        image: oppC.image
+    };
+
+    // Charger les images SVG
+    if (myC.image) {
+        G.player.img = new Image();
+        G.player.img.src = myC.image;
+    }
+    if (oppC.image) {
+        G.opponent.img = new Image();
+        G.opponent.img.src = oppC.image;
+    }
+
+    G.gameTime    = 180;
+    G.matchEnded  = false;
+    G.particles   = [];
+    G.projectiles = [];
+    G.lastAtkTime = 0;
+    G.lastSpeTime = 0;
+    G.lastPosSend = 0;
+
+    G.isAiming = false;
+    G.aimAngle = 0;
+
+    RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}`).update({
+        y: Math.round(G.canvas.height / 2)
     });
+
+    if (G.matchListenerRef && G.matchListenerCb) {
+        G.matchListenerRef.off('value', G.matchListenerCb);
+    }
+    G.matchListenerCb  = onMatchSnapshot;
+    G.matchListenerRef = RTDB.ref(`active_matches/${G.matchId}`);
+    G.matchListenerRef.on('value', G.matchListenerCb);
+
+    installKeyboard();
+    installMobile();
+    installAimControls();
+
+    if (G.rafId) cancelAnimationFrame(G.rafId);
+    G.rafId = requestAnimationFrame(gameLoop);
+
+    startCooldownUI();
+    updateTimerUI();
+    updateHpBars();
+    console.log('🎯 Game init. P1:', G.isPlayer1);
 }
 
 /* =============================================
