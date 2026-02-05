@@ -2,6 +2,10 @@
 // WARSLIGUE — MATCHMAKING SYSTEM (RÉPARATION COMPLÈTE)
 // ==========================================
 
+console.log('🚀 MATCHMAKING.JS CHARGÉ !');
+console.log('G existe ?', typeof G !== 'undefined');
+console.log('RTDB existe ?', typeof RTDB !== 'undefined');
+
 /* =============================================
    BOUTON PLAY — LANCER LE MATCHMAKING
    ============================================= */
@@ -15,8 +19,20 @@ function startMatchmaking() {
         return;
     }
 
-    // Nettoyer tout état précédent
-    stopMatchmaking();
+    // Nettoyer tout état précédent SAUF les notifications
+    if (G.myQueueKey) {
+        RTDB.ref('matchmaking_queue/' + G.myQueueKey).remove();
+        G.myQueueKey = null;
+    }
+    
+    if (G.mmChildListenerRef && G.mmChildListener) {
+        G.mmChildListenerRef.off('child_added', G.mmChildListener);
+        G.mmChildListenerRef = null;
+        G.mmChildListener = null;
+    }
+    
+    clearTimeout(G.mmSearchTimer);
+    clearInterval(G.mmCountdownId);
     
     // Afficher l'écran de matchmaking
     showScreen('matchmaking-screen');
@@ -272,13 +288,17 @@ function stopMatchmaking() {
     
     // Retirer de la queue
     if (G.myQueueKey) {
-        RTDB.ref('matchmaking_queue/' + G.myQueueKey).remove();
+        RTDB.ref('matchmaking_queue/' + G.myQueueKey).remove().catch(err => {
+            console.warn('Erreur suppression queue:', err);
+        });
         G.myQueueKey = null;
     }
     
     // Arrêter le listener de notification
-    if (G.matchNotificationListener && G.user) {
-        RTDB.ref('match_notifications/' + G.user.uid).off('value', G.matchNotificationListener);
+    if (G.matchNotificationListener) {
+        if (G.user) {
+            RTDB.ref('match_notifications/' + G.user.uid).off('value', G.matchNotificationListener);
+        }
         G.matchNotificationListener = null;
     }
     
@@ -290,10 +310,16 @@ function stopMatchmaking() {
     }
     
     // Arrêter les timers
-    clearTimeout(G.mmSearchTimer);
-    clearInterval(G.mmCountdownId);
-    G.mmSearchTimer = null;
-    G.mmCountdownId = null;
+    if (G.mmSearchTimer) {
+        clearTimeout(G.mmSearchTimer);
+        G.mmSearchTimer = null;
+    }
+    
+    if (G.mmCountdownId) {
+        clearInterval(G.mmCountdownId);
+        G.mmCountdownId = null;
+    }
+    
     G.mmSeconds = 0;
 }
 

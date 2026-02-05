@@ -20,9 +20,13 @@ const AUTH = firebase.auth();
 const FSDB = firebase.firestore();
 const RTDB = firebase.database();
 
-/* =============================================
-   ÉTAT GLOBAL
-   ============================================= */
+// ==========================================
+// PATCH POUR java.js - AJOUTER matchNotificationListener
+// ==========================================
+
+// Dans java.js, trouve la section "ÉTAT GLOBAL" (ligne ~25)
+// Et REMPLACE l'objet G par celui-ci :
+
 const G = {
     user: null,
     playerData: null,
@@ -34,6 +38,7 @@ const G = {
     mmSearchTimer: null,
     mmCountdownId: null,
     mmSeconds: 0,
+    matchNotificationListener: null,  // ← AJOUTE CETTE LIGNE
 
     matchId: null,
     isPlayer1: false,
@@ -79,22 +84,14 @@ const G = {
     touchAimId: null
 };
 
-/* =============================================
-   UTILS
-   ============================================= */
-function showScreen(id) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-}
-
-function showError(msg) {
-    const el = document.getElementById('auth-error');
-    el.textContent = msg;
-    el.classList.add('show');
-    clearTimeout(el._ht);
-    el._ht = setTimeout(() => el.classList.remove('show'), 3200);
-}
-
+// Si tu as un message d'erreur "G is not defined" dans matchmaking.js,
+// c'est parce que matchmaking.js est chargé avant java.js
+// 
+// VÉRIFIE l'ordre des scripts dans index.html :
+// <script src="character.js"></script>
+// <script src="rewards-gold.js"></script>
+// <script src="java.js"></script>        ← DOIT ÊTRE AVANT matchmaking.js
+// <script src="matchmaking.js"></script>  ← DOIT ÊTRE APRÈS java.js
 /* =============================================
    LOADING SCREEN
    ============================================= */
