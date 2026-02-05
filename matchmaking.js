@@ -28,13 +28,17 @@ function startMatchmaking() {
     G.mmSeconds = 0;
     startMatchmakingTimer();
     
+    // Écouter les notifications de match (pour le joueur 2)
+    listenForMatchNotification();
+    
     // Créer une entrée dans la queue
     const queueData = {
         userId: G.user.uid,
         username: G.playerData.username || 'Joueur',
         trophies: G.playerData.trophies || 0,
         selectedCharacter: G.selectedChar,
-        timestamp: firebase.database.ServerValue.TIMESTAMP
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        inMatch: false  // Drapeau pour éviter les doubles matchs
     };
     
     // Ajouter à la queue de matchmaking
@@ -44,13 +48,44 @@ function startMatchmaking() {
     queueRef.set(queueData).then(() => {
         console.log('✅ Ajouté à la queue:', G.myQueueKey);
         
-        // Chercher un adversaire
+        // Chercher un adversaire (joueur 1 uniquement)
         searchForOpponent();
         
     }).catch(err => {
         console.error('❌ Erreur queue:', err);
         showError('Erreur de connexion');
         stopMatchmaking();
+    });
+}
+
+/* =============================================
+   ÉCOUTER LES NOTIFICATIONS DE MATCH (JOUEUR 2)
+   ============================================= */
+function listenForMatchNotification() {
+    if (!G.user) return;
+    
+    const notifRef = RTDB.ref('match_notifications/' + G.user.uid);
+    
+    G.matchNotificationListener = notifRef.on('value', async (snapshot) => {
+        const notif = snapshot.val();
+        
+        if (!notif || !notif.matchId) return;
+        
+        console.log('🔔 NOTIFICATION DE MATCH REÇUE:', notif.matchId);
+        
+        // Arrêter le matchmaking
+        stopMatchmaking();
+        
+        // Définir l'ID du match et que je suis le joueur 2
+        G.matchId = notif.matchId;
+        G.isPlayer1 = false;
+        
+        // Supprimer la notification
+        notifRef.remove();
+        
+        // Rejoindre le match
+        console.log('🎮 Rejoindre le match en tant que joueur 2');
+        initGame();
     });
 }
 
@@ -71,6 +106,12 @@ function searchForOpponent() {
         // Ne pas se matcher avec soi-même
         if (opponentKey === G.myQueueKey) return;
         
+        // Vérifier si l'adversaire est déjà en match
+        if (opponentData.inMatch) {
+            console.log('⚠️ Adversaire déjà en match, skip');
+            return;
+        }
+        
         console.log('👀 Adversaire potentiel trouvé:', opponentData.username);
         
         // Vérifier si l'adversaire est dans une plage acceptable de trophées
@@ -86,6 +127,32 @@ function searchForOpponent() {
             const amICreator = G.myQueueKey < opponentKey;
             
             if (amICreator) {
+                // Vérifier une dernière fois que personne n'a déjà créé de match
+                const myCheck = await RTDB.ref('matchmaking_queue/' + G.myQueueKey).once('value');
+                const oppCheck = await RTDB.ref('matchmaking_queue/' + opponentKey).once('value');
+                
+                if (!myCheck.exists() || !oppCheck.exists()) {
+                    console.log('⚠️ Un des joueurs n\'est plus dans la queue');
+                    return;
+                }
+                
+                const myData = myCheck.val();
+                const oppData = oppCheck.val();
+                
+                if (myData.inMatch || oppData.inMatch) {
+                    console.log('⚠️ Un des joueurs est déjà en match');
+                    return;
+                }
+                
+                // Marquer les deux joueurs comme "en match" AVANT de créer le match
+                await Promise.all([
+                    RTDB.ref('matchmaking_queue/' + G.myQueueKey).update({ inMatch: true }),
+                    RTDB.ref('matchmaking_queue/' + opponentKey).update({ inMatch: true })
+                ]);
+                
+                console.log('🔒 Joueurs verrouillés, création du match...');
+                
+                // Créer le match
                 await createMatch(opponentKey, opponentData);
             }
         }
@@ -106,55 +173,78 @@ function searchForOpponent() {
 async function createMatch(opponentKey, opponentData) {
     console.log('🎮 Création du match...');
     
-    // Retirer les deux joueurs de la queue
-    RTDB.ref('matchmaking_queue/' + G.myQueueKey).remove();
-    RTDB.ref('matchmaking_queue/' + opponentKey).remove();
-    
-    // Arrêter la recherche
-    if (G.mmChildListenerRef && G.mmChildListener) {
-        G.mmChildListenerRef.off('child_added', G.mmChildListener);
+    try {
+        // Arrêter la recherche IMMÉDIATEMENT
+        if (G.mmChildListenerRef && G.mmChildListener) {
+            G.mmChildListenerRef.off('child_added', G.mmChildListener);
+            G.mmChildListenerRef = null;
+            G.mmChildListener = null;
+        }
+        clearTimeout(G.mmSearchTimer);
+        clearInterval(G.mmCountdownId);
+        
+        // Créer le match dans Firebase AVANT de retirer de la queue
+        const matchRef = RTDB.ref('active_matches').push();
+        G.matchId = matchRef.key;
+        G.isPlayer1 = true;
+        
+        const myChar = CHARACTERS[G.selectedChar] || CHARACTERS.warrior;
+        const oppChar = CHARACTERS[opponentData.selectedCharacter] || CHARACTERS.warrior;
+        
+        const matchData = {
+            player1: {
+                uid: G.user.uid,
+                username: G.playerData.username || 'Joueur',
+                character: G.selectedChar,
+                hp: myChar.hp,
+                x: 200,
+                y: 300,
+                projectiles: []
+            },
+            player2: {
+                uid: opponentData.userId,
+                username: opponentData.username,
+                character: opponentData.selectedCharacter,
+                hp: oppChar.hp,
+                x: 600,
+                y: 300,
+                projectiles: []
+            },
+            status: 'active',
+            startTime: firebase.database.ServerValue.TIMESTAMP,
+            timeRemaining: 180,
+            createdBy: G.user.uid
+        };
+        
+        await matchRef.set(matchData);
+        
+        console.log('✅ Match créé:', G.matchId);
+        
+        // MAINTENANT retirer les deux joueurs de la queue
+        await Promise.all([
+            RTDB.ref('matchmaking_queue/' + G.myQueueKey).remove(),
+            RTDB.ref('matchmaking_queue/' + opponentKey).remove()
+        ]);
+        
+        console.log('✅ Joueurs retirés de la queue');
+        
+        // Notifier le joueur 2 du match créé
+        await RTDB.ref('match_notifications/' + opponentData.userId).set({
+            matchId: G.matchId,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+        
+        console.log('✅ Notification envoyée au joueur 2');
+        
+        // Lancer le jeu pour le joueur 1
+        initGame();
+        
+    } catch (error) {
+        console.error('❌ Erreur création match:', error);
+        showError('Erreur lors de la création du match');
+        stopMatchmaking();
+        showScreen('main-menu');
     }
-    clearTimeout(G.mmSearchTimer);
-    clearInterval(G.mmCountdownId);
-    
-    // Créer le match dans Firebase
-    const matchRef = RTDB.ref('active_matches').push();
-    G.matchId = matchRef.key;
-    G.isPlayer1 = true;
-    
-    const myChar = CHARACTERS[G.selectedChar] || CHARACTERS.warrior;
-    const oppChar = CHARACTERS[opponentData.selectedCharacter] || CHARACTERS.warrior;
-    
-    const matchData = {
-        player1: {
-            uid: G.user.uid,
-            username: G.playerData.username || 'Joueur',
-            character: G.selectedChar,
-            hp: myChar.hp,
-            x: 200,
-            y: 300,
-            projectiles: []
-        },
-        player2: {
-            uid: opponentData.userId,
-            username: opponentData.username,
-            character: opponentData.selectedCharacter,
-            hp: oppChar.hp,
-            x: 600,
-            y: 300,
-            projectiles: []
-        },
-        status: 'active',
-        startTime: firebase.database.ServerValue.TIMESTAMP,
-        timeRemaining: 180
-    };
-    
-    await matchRef.set(matchData);
-    
-    console.log('✅ Match créé:', G.matchId);
-    
-    // Lancer le jeu
-    initGame();
 }
 
 /* =============================================
@@ -184,6 +274,12 @@ function stopMatchmaking() {
     if (G.myQueueKey) {
         RTDB.ref('matchmaking_queue/' + G.myQueueKey).remove();
         G.myQueueKey = null;
+    }
+    
+    // Arrêter le listener de notification
+    if (G.matchNotificationListener && G.user) {
+        RTDB.ref('match_notifications/' + G.user.uid).off('value', G.matchNotificationListener);
+        G.matchNotificationListener = null;
     }
     
     // Arrêter les listeners
