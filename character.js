@@ -64,7 +64,7 @@ const CHARACTERS = {
         name: "Tank",
         emoji: "🛡️",
         image: "Group 5.svg",
-        hp: 150,
+        hp: 170,
         speed: 3,
         attackDamage: 8,
         attackRange: 70,

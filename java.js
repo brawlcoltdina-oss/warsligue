@@ -128,7 +128,7 @@ document.getElementById('register-btn').addEventListener('click', async () => {
     const username = document.getElementById('register-username').value.trim();
     const email    = document.getElementById('register-email').value.trim();
     const password = document.getElementById('register-password').value;
-    if (!username || username.length < 3)  return showError('Pseudo : min 3 caractères');
+    if (!username || username.length < 2)  return showError('Pseudo : min 3 caractères');
     if (!email)                            return showError('Email requis');
     if (password.length < 6)               return showError('Mot de passe : min 6 caractères');
     try {
