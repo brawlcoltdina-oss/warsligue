@@ -50,6 +50,34 @@ html, body {
     opacity: 1;
 }
 
+/* ===== LOGO STYLES ===== */
+.game-logo {
+    width: clamp(200px, 60vw, 400px);
+    height: auto;
+    margin-bottom: 2.2rem;
+    filter: drop-shadow(0 0 30px rgba(255, 51, 102, 0.5));
+    animation: logoFloat 3s ease-in-out infinite;
+}
+
+.game-logo-auth {
+    width: clamp(180px, 50vw, 300px);
+    height: auto;
+    margin-bottom: 1.8rem;
+    filter: drop-shadow(0 0 25px rgba(255, 51, 102, 0.4));
+}
+
+.game-logo-menu {
+    width: clamp(220px, 55vw, 350px);
+    height: auto;
+    filter: drop-shadow(0 0 35px rgba(255, 51, 102, 0.6));
+    animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
 .game-title {
     font-family: 'Bungee', cursive;
     background: linear-gradient(135deg, var(--primary), var(--accent));
@@ -67,7 +95,6 @@ html, body {
     background: var(--darker-bg);
 }
 .logo-container { text-align: center; animation: fadeInUp .8s ease; }
-.logo-container .game-title { font-size: clamp(2.8rem, 8vw, 4.2rem); margin-bottom: 2.2rem; }
 
 .loading-bar-wrap {
     width: 240px; height: 6px;
@@ -108,8 +135,8 @@ html, body {
     padding: 2.8rem 2.2rem;
     width: 90%; max-width: 400px;
     box-shadow: var(--shadow);
+    text-align: center;
 }
-.auth-container .game-title { font-size: 2.3rem; margin-bottom: 1.8rem; text-align: center; }
 
 .auth-form { display: none; }
 .auth-form.active { display: block; animation: fadeIn .3s ease; }
@@ -216,7 +243,6 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     justify-content: center; align-items: center;
     gap: 1.4rem; padding: 0 1.4rem 2rem;
 }
-.menu-content .game-title { font-size: clamp(2.4rem, 7vw, 3.4rem); }
 .menu-subtitle { color: var(--gray-text); font-size: .95rem; margin-top: -.6rem; }
 
 /* ===== BRAWLERS SELECTION (BRAWL STARS STYLE) ===== */
@@ -1151,7 +1177,18 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
-    .game-title { font-size: 2rem !important; }
+    .game-logo {
+        width: clamp(160px, 50vw, 280px);
+    }
+    
+    .game-logo-auth {
+        width: clamp(140px, 45vw, 240px);
+    }
+    
+    .game-logo-menu {
+        width: clamp(180px, 48vw, 280px);
+    }
+    
     .hp-bar { width: 120px !important; height: 16px !important; }
     .timer { font-size: 1.3rem !important; }
     .key-hints { display: none; }
