@@ -1,5 +1,5 @@
 // ==========================================
-// WARSLIGUE — java.js  (VERSION COMPLÈTE AVEC SVG)
+// WARSLIGUE — java.js  (VERSION CORRIGÉE - BUGS FIXES)
 // ==========================================
 
 /* =============================================
@@ -60,6 +60,7 @@ const G = {
 
     particles: [],
     projectiles: [],
+    opponentProjectileIds: new Set(), // ✅ NOUVEAU : Set pour tracker les IDs des projectiles adverses
 
     lastAtkTime: 0,
     lastSpeTime: 0,
@@ -397,7 +398,6 @@ function renderChestsGrid() {
             </button>
         `;
         
-        // ✅ AJOUT DE L'ÉVÉNEMENT CLICK ICI AU LIEU DE onclick=""
         const btn = card.querySelector('.shop-item-btn');
         if (canAfford) {
             btn.addEventListener('click', () => {
@@ -409,6 +409,7 @@ function renderChestsGrid() {
         grid.appendChild(card);
     }
 }
+
 async function buyChest(chestKey) {
     console.log('🛒 Tentative achat:', chestKey);
     
@@ -440,6 +441,7 @@ async function buyChest(chestKey) {
         showError('Erreur lors de l\'achat');
     }
 }
+
 async function openChestAnimation(chestKey) {
     const chest = CHEST_TYPES[chestKey];
     const modal = document.getElementById('reward-modal');
@@ -749,12 +751,14 @@ function initGame(matchData) {
     G.matchEnded  = false;
     G.particles   = [];
     G.projectiles = [];
+    G.opponentProjectileIds = new Set(); // ✅ RESET du Set
     G.lastAtkTime = 0;
     G.lastSpeTime = 0;
     G.lastPosSend = 0;
 
     G.isAiming = false;
     G.aimAngle = 0;
+    G.aimDistance = 0;
 
     RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}`).update({
         y: Math.round(G.canvas.height / 2)
@@ -788,7 +792,7 @@ function resizeCanvas() {
 
 
 /* =============================================
-   SYSTÈME DE VISÉE (BRAWL STARS STYLE)
+   SYSTÈME DE VISÉE (CORRIGÉ - PROPORTIONNEL À LA PORTÉE)
    ============================================= */
 function installAimControls() {
     G.canvas.addEventListener('mousemove', (e) => {
@@ -800,7 +804,11 @@ function installAimControls() {
         const dx = G.mouseX - G.player.x;
         const dy = G.mouseY - G.player.y;
         G.aimAngle = Math.atan2(dy, dx);
-        G.aimDistance = Math.min(Math.sqrt(dx*dx + dy*dy), 200);
+        
+        // ✅ CORRECTION : Limiter la distance au max de la portée d'attaque
+        const maxRange = Math.max(G.player.atkRange, G.player.speRange);
+        const rawDist = Math.sqrt(dx*dx + dy*dy);
+        G.aimDistance = Math.min(rawDist, maxRange);
     });
 
     G.canvas.addEventListener('touchmove', (e) => {
@@ -814,12 +822,16 @@ function installAimControls() {
         const dx = G.mouseX - G.player.x;
         const dy = G.mouseY - G.player.y;
         G.aimAngle = Math.atan2(dy, dx);
-        G.aimDistance = Math.min(Math.sqrt(dx*dx + dy*dy), 200);
+        
+        // ✅ CORRECTION : Limiter la distance au max de la portée d'attaque
+        const maxRange = Math.max(G.player.atkRange, G.player.speRange);
+        const rawDist = Math.sqrt(dx*dx + dy*dy);
+        G.aimDistance = Math.min(rawDist, maxRange);
     }, { passive: false });
 }
 
 /* =============================================
-   FIREBASE SNAPSHOT
+   FIREBASE SNAPSHOT (CORRIGÉ - PROJECTILES SANS DOUBLONS)
    ============================================= */
 function onMatchSnapshot(snap) {
     const data = snap.val();
@@ -845,8 +857,13 @@ function onMatchSnapshot(snap) {
         updateTimerUI();
     }
 
+    // ✅ CORRECTION : Synchroniser projectiles adverses SANS DOUBLONS
     if (gs[oppK] && gs[oppK].projectiles) {
         syncOpponentProjectiles(gs[oppK].projectiles);
+    } else {
+        // ✅ Si l'adversaire n'a plus de projectiles, on nettoie les anciens
+        G.projectiles = G.projectiles.filter(p => p.isMine);
+        G.opponentProjectileIds.clear();
     }
 
     updateHpBars();
@@ -854,17 +871,32 @@ function onMatchSnapshot(snap) {
     if ((G.player.hp <= 0 || G.opponent.hp <= 0) && !G.matchEnded) handleMatchEnd();
 }
 
+// ✅ CORRECTION : Fonction qui évite les doublons de projectiles
 function syncOpponentProjectiles(oppProjs) {
-    if (!oppProjs || oppProjs.length === 0) return;
+    if (!oppProjs || oppProjs.length === 0) {
+        // Nettoyer les projectiles adverses qui ne sont plus dans Firebase
+        G.projectiles = G.projectiles.filter(p => p.isMine);
+        G.opponentProjectileIds.clear();
+        return;
+    }
     
+    const currentOppIds = new Set(oppProjs.map(p => p.id));
+    
+    // Supprimer les projectiles adverses qui n'existent plus dans Firebase
+    G.projectiles = G.projectiles.filter(p => {
+        if (p.isMine) return true; // Garder nos propres projectiles
+        return currentOppIds.has(p.id); // Garder seulement les projectiles adverses encore dans Firebase
+    });
+    
+    // Ajouter les nouveaux projectiles adverses
     for (const proj of oppProjs) {
-        const exists = G.projectiles.some(p => p.id === proj.id && !p.isMine);
-        if (!exists) {
+        if (!G.opponentProjectileIds.has(proj.id)) {
             G.projectiles.push({
                 ...proj,
                 isMine: false,
                 isOpponent: true
             });
+            G.opponentProjectileIds.add(proj.id);
         }
     }
 }
@@ -1066,11 +1098,13 @@ function update() {
         proj.life--;
 
         if (proj.x < 0 || proj.x > G.canvas.width || proj.y < 0 || proj.y > G.canvas.height) {
+            if (!proj.isMine) G.opponentProjectileIds.delete(proj.id);
             G.projectiles.splice(i, 1);
             continue;
         }
 
         if (proj.life <= 0) {
+            if (!proj.isMine) G.opponentProjectileIds.delete(proj.id);
             G.projectiles.splice(i, 1);
             continue;
         }
@@ -1270,22 +1304,25 @@ function render() {
 function drawAimIndicator(ctx) {
     if (!G.player) return;
 
-    const range = G.player.atkRange;
+    const range = Math.max(G.player.atkRange, G.player.speRange);
     
+    // ✅ CORRECTION : Utiliser aimDistance qui est déjà limité à la portée
+    const aimEndX = G.player.x + Math.cos(G.aimAngle) * G.aimDistance;
+    const aimEndY = G.player.y + Math.sin(G.aimAngle) * G.aimDistance;
+    
+    // Ligne de visée
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
     ctx.moveTo(G.player.x, G.player.y);
-    ctx.lineTo(
-        G.player.x + Math.cos(G.aimAngle) * range,
-        G.player.y + Math.sin(G.aimAngle) * range
-    );
+    ctx.lineTo(aimEndX, aimEndY);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
 
+    // Cercle de portée
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 51, 102, 0.2)';
     ctx.lineWidth = 1.5;
@@ -1294,27 +1331,26 @@ function drawAimIndicator(ctx) {
     ctx.stroke();
     ctx.restore();
 
-    const aimX = G.player.x + Math.cos(G.aimAngle) * Math.min(range, G.aimDistance);
-    const aimY = G.player.y + Math.sin(G.aimAngle) * Math.min(range, G.aimDistance);
-    
+    // Réticule de visée
     ctx.save();
     ctx.fillStyle = 'rgba(255, 51, 102, 0.4)';
     ctx.strokeStyle = '#FF3366';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(aimX, aimY, 8, 0, Math.PI * 2);
+    ctx.arc(aimEndX, aimEndY, 8, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     
+    // Croix du réticule
     ctx.beginPath();
-    ctx.moveTo(aimX - 12, aimY);
-    ctx.lineTo(aimX - 4, aimY);
-    ctx.moveTo(aimX + 4, aimY);
-    ctx.lineTo(aimX + 12, aimY);
-    ctx.moveTo(aimX, aimY - 12);
-    ctx.lineTo(aimX, aimY - 4);
-    ctx.moveTo(aimX, aimY + 4);
-    ctx.lineTo(aimX, aimY + 12);
+    ctx.moveTo(aimEndX - 12, aimEndY);
+    ctx.lineTo(aimEndX - 4, aimEndY);
+    ctx.moveTo(aimEndX + 4, aimEndY);
+    ctx.lineTo(aimEndX + 12, aimEndY);
+    ctx.moveTo(aimEndX, aimEndY - 12);
+    ctx.lineTo(aimEndX, aimEndY - 4);
+    ctx.moveTo(aimEndX, aimEndY + 4);
+    ctx.lineTo(aimEndX, aimEndY + 12);
     ctx.stroke();
     ctx.restore();
 }
@@ -1538,6 +1574,7 @@ function cleanupGame() {
     G.keys = {};
     G.particles = [];
     G.projectiles = [];
+    G.opponentProjectileIds.clear(); // ✅ RESET du Set
 }
 
 function fullCleanup() {
@@ -1553,4 +1590,4 @@ function fullCleanup() {
 
 window.addEventListener('beforeunload', fullCleanup);
 
-console.log('🎮 WARSLIGUE — Version complète avec SVG chargée !');
+console.log('🎮 WARSLIGUE — Version corrigée chargée !');
