@@ -673,7 +673,7 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 }
 
 .shop-item::before {
-    content: '';
+
     position: absolute;
     inset: 0;
     background: radial-gradient(circle at center, rgba(255, 51, 102, 0.1) 0%, transparent 70%);

@@ -392,20 +392,35 @@ function renderChestsGrid() {
                 <span>💰</span>
                 <span>${chest.price}</span>
             </div>
-            <button class="shop-item-btn" ${!canAfford ? 'disabled' : ''} onclick="buyChest('${key}')">
+            <button class="shop-item-btn" data-chest="${key}" ${!canAfford ? 'disabled' : ''}>
                 ${canAfford ? 'Acheter' : 'Pas assez de 💰'}
             </button>
         `;
         
+        // ✅ AJOUT DE L'ÉVÉNEMENT CLICK ICI AU LIEU DE onclick=""
+        const btn = card.querySelector('.shop-item-btn');
+        if (canAfford) {
+            btn.addEventListener('click', () => {
+                console.log('🎁 Clic sur coffre:', key);
+                buyChest(key);
+            });
+        }
+        
         grid.appendChild(card);
     }
 }
-
 async function buyChest(chestKey) {
-    if (!G.user || !G.playerData) return;
+    console.log('🛒 Tentative achat:', chestKey);
+    
+    if (!G.user || !G.playerData) {
+        console.error('❌ Pas d\'utilisateur connecté');
+        return;
+    }
     
     const chest = CHEST_TYPES[chestKey];
     const currentGold = G.playerData.gold || 0;
+    
+    console.log('💰 Or actuel:', currentGold, '/ Prix:', chest.price);
     
     if (currentGold < chest.price) {
         showError('Pas assez de pièces !');
@@ -417,6 +432,7 @@ async function buyChest(chestKey) {
             gold: currentGold - chest.price
         });
         
+        console.log('✅ Achat réussi, ouverture du coffre...');
         await openChestAnimation(chestKey);
         
     } catch (e) {
@@ -424,7 +440,6 @@ async function buyChest(chestKey) {
         showError('Erreur lors de l\'achat');
     }
 }
-
 async function openChestAnimation(chestKey) {
     const chest = CHEST_TYPES[chestKey];
     const modal = document.getElementById('reward-modal');
