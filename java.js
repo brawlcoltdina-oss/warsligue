@@ -168,20 +168,26 @@ document.getElementById('logout-btn').addEventListener('click', () => {
     AUTH.signOut();
 });
 
-/* =============================================
-   AUTH STATE CHANGED
-   ============================================= */
+// ==========================================
+// CODE CORRIGÉ À COPIER-COLLER DANS java.js
+// ==========================================
+
+// ✅ CORRECTION 1 : AUTH.onAuthStateChanged (ligne ~89)
+// Remplacer la fonction complète par celle-ci :
+
 AUTH.onAuthStateChanged(async (user) => {
     await new Promise(r => setTimeout(r, 1800));
     if (user) {
         G.user = user;
         await ensurePlayerDoc(user);
         listenPlayerData(user.uid);
+        initOnlineTracking(); // ✅ AJOUT
         showScreen('main-menu');
     } else {
         G.user = null;
         G.playerData = null;
         if (G.playerDataUnsub) { G.playerDataUnsub(); G.playerDataUnsub = null; }
+        stopOnlineTracking(); // ✅ AJOUT
         showScreen('auth-screen');
     }
 });
@@ -1577,11 +1583,15 @@ function cleanupGame() {
     G.opponentProjectileIds.clear(); // ✅ RESET du Set
 }
 
+// ✅ CORRECTION 2 : fullCleanup (ligne ~640)
+// Remplacer la fonction complète par celle-ci :
+
 function fullCleanup() {
     cleanupGame();
     stopMatchmaking();
     removeKeyboard();
     stopConfetti();
+    stopOnlineTracking(); // ✅ AJOUT
     if (G.matchId) {
         RTDB.ref(`active_matches/${G.matchId}`).remove();
         G.matchId = null;

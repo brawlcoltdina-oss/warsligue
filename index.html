@@ -85,7 +85,14 @@
                 </div>
             </div>
         </div>
-        <button id="logout-btn" class="btn-secondary">Déco</button>
+        <div class="header-right">
+            <div class="online-counter">
+                <span class="online-dot"></span>
+                <span id="online-count">0</span>
+                <span class="online-label">en ligne</span>
+            </div>
+            <button id="settings-btn" class="btn-icon-header">⚙️</button>
+        </div>
     </div>
 
     <div class="menu-content">
@@ -129,6 +136,90 @@
             <button id="leaderboard-btn" class="btn-large btn-secondary">
                 <span class="btn-icon">🏅</span><span>CLASSEMENT</span>
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== SETTINGS PANEL ===================== -->
+<div id="settings-panel" class="side-panel">
+    <div class="panel-overlay" id="settings-panel-overlay"></div>
+    <div class="panel-content">
+        <div class="panel-header">
+            <h2 class="panel-title">⚙️ PARAMÈTRES</h2>
+            <button id="close-settings-panel" class="btn-close">✕</button>
+        </div>
+        
+        <div class="settings-container">
+            <div class="settings-section">
+                <h3 class="section-title">🎮 Contrôles</h3>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">Afficher les touches</span>
+                        <span class="setting-desc">Afficher les raccourcis clavier</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-key-hints" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">Vibrations (mobile)</span>
+                        <span class="setting-desc">Retour haptique sur actions</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-vibration" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3 class="section-title">🎨 Affichage</h3>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">Particules</span>
+                        <span class="setting-desc">Effets visuels de combat</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-particles" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">Flash d'impact</span>
+                        <span class="setting-desc">Effet lumineux sur les coups</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-flash" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3 class="section-title">📊 Informations</h3>
+                <div class="info-item">
+                    <span class="info-label">Version</span>
+                    <span class="info-value">1.2.0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Joueur ID</span>
+                    <span class="info-value" id="player-uid">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Compte créé</span>
+                    <span class="info-value" id="account-created">-</span>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <button id="logout-btn" class="btn-logout">
+                    <span>🚪</span>
+                    <span>Se déconnecter</span>
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -299,15 +390,15 @@
     </div>
 </div>
 
-<!-- ===================== FIREBASE SDK ===================== -->
+<!-- FIREBASE SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
-<!-- GAME SCRIPTS (ORDRE IMPORTANT!) -->
 <script src="character.js"></script>
 <script src="rewards-gold.js"></script>
+<script src="online-tracking.js"></script> <!-- ✅ NOUVEAU -->
 <script src="java.js"></script>
 
 </body>
