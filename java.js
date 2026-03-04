@@ -61,6 +61,13 @@ const G = {
     particles: [],
     projectiles: [],
     opponentProjectileIds: new Set(), // ✅ NOUVEAU : Set pour tracker les IDs des projectiles adverses
+    walls: [], // ✅ NOUVEAU : Système de murs
+    
+    gameMode: null, // ✅ NOUVEAU : 'multiplayer' ou 'zombie'
+    zombies: [], // ✅ NOUVEAU : Liste des zombies
+    zombieSpawnTimer: 0,
+    zombieWaveCount: 0,
+    zombieSurvivalStart: 0,
 
     lastAtkTime: 0,
     lastSpeTime: 0,
@@ -526,9 +533,28 @@ document.getElementById('reward-overlay').addEventListener('click', () => {
 
 
 /* =============================================
+   MODE SELECTION
+   ============================================= */
+document.getElementById('play-btn').addEventListener('click', showModeSelection);
+document.getElementById('cancel-mode-selection').addEventListener('click', () => showScreen('main-menu'));
+
+function showModeSelection() {
+    showScreen('mode-selection-screen');
+}
+
+document.getElementById('mode-multiplayer').addEventListener('click', () => {
+    G.gameMode = 'multiplayer';
+    startMatchmaking();
+});
+
+document.getElementById('mode-zombie').addEventListener('click', () => {
+    G.gameMode = 'zombie';
+    startZombieMode();
+});
+
+/* =============================================
    MATCHMAKING
    ============================================= */
-document.getElementById('play-btn').addEventListener('click', startMatchmaking);
 document.getElementById('cancel-matchmaking').addEventListener('click', cancelMatchmaking);
 
 async function startMatchmaking() {
@@ -684,8 +710,37 @@ async function cancelMatchmaking() {
 }
 
 /* =============================================
-   ENTRER DANS LE MATCH
+   ZOMBIE MODE
    ============================================= */
+async function startZombieMode() {
+    if (!G.playerData) return;
+    showScreen('game-screen');
+    
+    // Initialiser le mode zombie
+    G.matchEnded = false;
+    G.gameTime = 0; // Compteur de temps survécu
+    G.zombies = [];
+    G.projectiles = [];
+    G.particles = [];
+    G.zombieWaveCount = 0;
+    G.zombieSpawnTimer = 0;
+    G.zombieSurvivalStart = Date.now();
+    
+    // Setup du joueur
+    document.getElementById('player-game-name').textContent = '🧟 MONDE ZOMBIE';
+    document.getElementById('opponent-game-name').textContent = 'Survivez !';
+    
+    // Créer une pseudo-partie pour le contexte du jeu
+    G.matchId = 'zombie_' + Date.now();
+    G.opponent = null;
+    
+    initGame(null);
+    
+    console.log('🧟 Mode Zombie démarré !');
+}
+
+/* =============================================
+   ENTRER DANS LE MATCH   ============================================= */
 function enterMatch(matchId, matchData) {
     console.log('🎮 Match:', matchId);
     G.matchId    = matchId;
@@ -715,42 +770,67 @@ function initGame(matchData) {
     G.resizeFn = resizeCanvas;
     window.addEventListener('resize', G.resizeFn);
 
-    const myKey  = G.isPlayer1 ? matchData.player1Char : matchData.player2Char;
-    const oppKey = G.isPlayer1 ? matchData.player2Char : matchData.player1Char;
-    const myC    = CHARACTERS[myKey]  || CHARACTERS.warrior;
-    const oppC   = CHARACTERS[oppKey] || CHARACTERS.warrior;
+    // En mode zombie, on n'a pas d'opponent
+    if (G.gameMode === 'zombie') {
+        const myKey = G.selectedChar || 'warrior';
+        const myC = CHARACTERS[myKey] || CHARACTERS.warrior;
 
-    G.player = {
-        x: G.isPlayer1 ? 80 : G.canvas.width - 80,
-        y: G.canvas.height / 2,
-        hp: myC.hp, maxHp: myC.hp,
-        radius: myC.radius, color: myC.color, glowColor: myC.glowColor,
-        speed: myC.speed,
-        atkDmg: myC.attackDamage, atkRange: myC.attackRange, atkCd: myC.attackCooldown,
-        speDmg: myC.specialDamage, speRange: myC.specialRange, speCd: myC.specialCooldown,
-        emoji: myC.emoji,
-        image: myC.image
-    };
+        G.player = {
+            x: G.canvas.width / 2,
+            y: G.canvas.height / 2,
+            hp: myC.hp, maxHp: myC.hp,
+            radius: myC.radius, color: myC.color, glowColor: myC.glowColor,
+            speed: myC.speed,
+            atkDmg: myC.attackDamage, atkRange: myC.attackRange, atkCd: myC.attackCooldown,
+            speDmg: myC.specialDamage, speRange: myC.specialRange, speCd: myC.specialCooldown,
+            emoji: myC.emoji,
+            image: myC.image
+        };
 
-    G.opponent = {
-        x: G.isPlayer1 ? G.canvas.width - 80 : 80,
-        y: G.canvas.height / 2,
-        targetX: G.isPlayer1 ? G.canvas.width - 80 : 80,
-        targetY: G.canvas.height / 2,
-        hp: oppC.hp, maxHp: oppC.hp,
-        radius: oppC.radius, color: oppC.color, glowColor: oppC.glowColor,
-        emoji: oppC.emoji,
-        image: oppC.image
-    };
+        // Charger image du joueur
+        if (myC.image) {
+            G.player.img = new Image();
+            G.player.img.src = myC.image;
+        }
+    } else {
+        // Mode multijoueur normal
+        const myKey  = G.isPlayer1 ? matchData.player1Char : matchData.player2Char;
+        const oppKey = G.isPlayer1 ? matchData.player2Char : matchData.player1Char;
+        const myC    = CHARACTERS[myKey]  || CHARACTERS.warrior;
+        const oppC   = CHARACTERS[oppKey] || CHARACTERS.warrior;
 
-    // Charger les images SVG
-    if (myC.image) {
-        G.player.img = new Image();
-        G.player.img.src = myC.image;
-    }
-    if (oppC.image) {
-        G.opponent.img = new Image();
-        G.opponent.img.src = oppC.image;
+        G.player = {
+            x: G.isPlayer1 ? 80 : G.canvas.width - 80,
+            y: G.canvas.height / 2,
+            hp: myC.hp, maxHp: myC.hp,
+            radius: myC.radius, color: myC.color, glowColor: myC.glowColor,
+            speed: myC.speed,
+            atkDmg: myC.attackDamage, atkRange: myC.attackRange, atkCd: myC.attackCooldown,
+            speDmg: myC.specialDamage, speRange: myC.specialRange, speCd: myC.specialCooldown,
+            emoji: myC.emoji,
+            image: myC.image
+        };
+
+        G.opponent = {
+            x: G.isPlayer1 ? G.canvas.width - 80 : 80,
+            y: G.canvas.height / 2,
+            targetX: G.isPlayer1 ? G.canvas.width - 80 : 80,
+            targetY: G.canvas.height / 2,
+            hp: oppC.hp, maxHp: oppC.hp,
+            radius: oppC.radius, color: oppC.color, glowColor: oppC.glowColor,
+            emoji: oppC.emoji,
+            image: oppC.image
+        };
+
+        // Charger les images SVG
+        if (myC.image) {
+            G.player.img = new Image();
+            G.player.img.src = myC.image;
+        }
+        if (oppC.image) {
+            G.opponent.img = new Image();
+            G.opponent.img.src = oppC.image;
+        }
     }
 
     G.gameTime    = 180;
@@ -758,6 +838,7 @@ function initGame(matchData) {
     G.particles   = [];
     G.projectiles = [];
     G.opponentProjectileIds = new Set(); // ✅ RESET du Set
+    initializeWalls(); // Les murs sont désactivés mais on garde l'appel
     G.lastAtkTime = 0;
     G.lastSpeTime = 0;
     G.lastPosSend = 0;
@@ -794,6 +875,204 @@ function resizeCanvas() {
     if (!G.canvas) return;
     G.canvas.width  = window.innerWidth;
     G.canvas.height = window.innerHeight;
+}
+
+/* =============================================
+   SYSTÈME DE MURS (DÉSACTIVÉ)
+   ============================================= */
+function initializeWalls() {
+    G.walls = []; // Les murs sont désactivés pour laisser la place au mode zombie
+}
+
+function checkProjectileWallCollision(proj) {
+    const projRadius = proj.size || 6;
+    
+    for (const wall of G.walls) {
+        const closestX = Math.max(wall.x, Math.min(proj.x, wall.x + wall.w));
+        const closestY = Math.max(wall.y, Math.min(proj.y, wall.y + wall.h));
+        
+        const distX = proj.x - closestX;
+        const distY = proj.y - closestY;
+        const distSquared = (distX * distX) + (distY * distY);
+        
+        if (distSquared < (projRadius * projRadius)) {
+            return true; // Collision détectée
+        }
+    }
+    
+    return false; // Pas de collision
+}
+
+// ✅ NOUVEAU : Collision player avec les murs
+function checkPlayerWallCollision(playerX, playerY) {
+    const playerRadius = G.player.radius || 20;
+    
+    for (const wall of G.walls) {
+        const closestX = Math.max(wall.x, Math.min(playerX, wall.x + wall.w));
+        const closestY = Math.max(wall.y, Math.min(playerY, wall.y + wall.h));
+        
+        const distX = playerX - closestX;
+        const distY = playerY - closestY;
+        const distSquared = (distX * distX) + (distY * distY);
+        
+        if (distSquared < (playerRadius * playerRadius)) {
+            return true; // Collision avec un mur
+        }
+    }
+    
+    return false; // Pas de collision
+}
+
+/* =============================================
+   ZOMBIE MODE FUNCTIONS
+   ============================================= */
+function updateZombieMode() {
+    // Compteur de survie
+    G.gameTime = Math.floor((Date.now() - G.zombieSurvivalStart) / 1000);
+    
+    // Spawn de zombies par vagues
+    G.zombieSpawnTimer++;
+    const spawnInterval = Math.max(60, 180 - G.zombieWaveCount * 8); // Plus lent, spawn moins fréquent
+    
+    if (G.zombieSpawnTimer >= spawnInterval) {
+        G.zombieSpawnTimer = 0;
+        G.zombieWaveCount++;
+        // Spawner 1-2 zombies MAX selon la vague (réduit drastiquement)
+        const zombieCount = Math.min(1 + Math.floor(G.zombieWaveCount / 4), 2);
+        for (let i = 0; i < zombieCount; i++) {
+            spawnZombie();
+        }
+    }
+    
+    // Mouvement et comportement des zombies
+    for (let i = G.zombies.length - 1; i >= 0; i--) {
+        const zombie = G.zombies[i];
+        
+        // Bouger vers le joueur
+        const dx = G.player.x - zombie.x;
+        const dy = G.player.y - zombie.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        if (dist > 0) {
+            zombie.x += (dx / dist) * zombie.speed;
+            zombie.y += (dy / dist) * zombie.speed;
+        }
+        
+        // Vérifier collision avec le joueur
+        if (dist < G.player.radius + zombie.radius) {
+            // Le joueur prend des dégâts
+            G.player.hp -= (zombie.damage * 0.016); // Par frame
+            
+            // Si le joueur est mort
+            if (G.player.hp <= 0) {
+                endZombieMode();
+                return;
+            }
+        }
+    }
+    
+    // Mettre à jour l'interface
+    updateHpBars();
+    updateTimerUI();
+}
+
+function spawnZombie() {
+    // Spawn à un endroit aléatoire sur les bords
+    let x, y;
+    const side = Math.random();
+    
+    if (side < 0.25) { // Top
+        x = Math.random() * G.canvas.width;
+        y = -30;
+    } else if (side < 0.5) { // Right
+        x = G.canvas.width + 30;
+        y = Math.random() * G.canvas.height;
+    } else if (side < 0.75) { // Bottom
+        x = Math.random() * G.canvas.width;
+        y = G.canvas.height + 30;
+    } else { // Left
+        x = -30;
+        y = Math.random() * G.canvas.height;
+    }
+    
+    const zombie = {
+        x: x,
+        y: y,
+        radius: 18,
+        speed: 2 + (G.zombieWaveCount * 0.15),  // Augmente avec les vagues
+        hp: 15 + (G.zombieWaveCount * 2),
+        damage: 5 + (G.zombieWaveCount * 0.5),
+        color: '#00aa00'
+    };
+    
+    G.zombies.push(zombie);
+}
+
+function endZombieMode() {
+    G.matchEnded = true;
+    const survivalTime = G.gameTime;
+    const goldReward = Math.floor(survivalTime * 2); // 2 pièces par seconde
+    const trophyReward = Math.floor(survivalTime / 10); // 1 trophée tous les 10 secondes
+    
+    saveZombieResults(survivalTime, goldReward, trophyReward);
+    
+    // Afficher les résultats
+    setTimeout(() => {
+        showZombieResults(survivalTime, goldReward, trophyReward);
+    }, 500);
+}
+
+async function saveZombieResults(survivalTime, gold, trophy) {
+    if (!G.user || !G.playerData) return;
+    
+    try {
+        const updates = {};
+        updates.gold = (G.playerData.gold || 0) + gold;
+        updates.trophies = (G.playerData.trophies || 0) + trophy;
+        
+        await FSDB.collection('players').doc(G.user.uid).update(updates);
+        
+        // Sauvegarder dans un log des parties
+        await FSDB.collection('players').doc(G.user.uid).collection('zombie_sessions').add({
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            survivalTime: survivalTime,
+            goldEarned: gold,
+            trophyEarned: trophy
+        });
+        
+        console.log('🧟 Resultats sauvegardés:', { survivalTime, gold, trophy });
+    } catch (e) {
+        console.error('Erreur sauvegarde resultats:', e);
+    }
+}
+
+function showZombieResults(survivalTime, gold, trophy) {
+    // Utiliser le result-screen existant avec les IDs appropriés
+    const resultTitle = document.getElementById('result-title');
+    const resultStats = document.querySelector('#result-screen .result-stats');
+    
+    if (resultTitle) {
+        resultTitle.textContent = `🧟 SURVIVANT! (${survivalTime}s)`;
+    }
+    
+    if (resultStats) {
+        resultStats.innerHTML = `
+            <div class="stat-row">
+                <span class="stat-label">Temps de survie</span>
+                <span class="stat-value">${survivalTime}s</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Pièces gagnées</span>
+                <span class="stat-value gold-change">+${gold} 💰</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Trophées gagnés</span>
+                <span class="stat-value trophy-change">+${trophy} 🏆</span>
+            </div>
+        `;
+    }
+    
+    showScreen('result-screen');
 }
 
 
@@ -840,6 +1119,9 @@ function installAimControls() {
    FIREBASE SNAPSHOT (CORRIGÉ - PROJECTILES SANS DOUBLONS)
    ============================================= */
 function onMatchSnapshot(snap) {
+    // En mode zombie, on n'a pas besoin de syncer avec Firebase
+    if (G.gameMode === 'zombie') return;
+    
     const data = snap.val();
     if (!data) return;
     if (data.status === 'finished' && !G.matchEnded) { handleMatchEnd(); return; }
@@ -877,33 +1159,41 @@ function onMatchSnapshot(snap) {
     if ((G.player.hp <= 0 || G.opponent.hp <= 0) && !G.matchEnded) handleMatchEnd();
 }
 
-// ✅ CORRECTION : Fonction qui évite les doublons de projectiles
+// ✅ CORRECTION COMPLÈTE : Fonction qui RECONSTRUIT proprement la liste des projectiles adverses SANS DOUBLONS
 function syncOpponentProjectiles(oppProjs) {
+    // Garder SEULEMENT les projectiles du joueur actuel
+    const myProjs = G.projectiles.filter(p => p.isMine);
+    
     if (!oppProjs || oppProjs.length === 0) {
-        // Nettoyer les projectiles adverses qui ne sont plus dans Firebase
-        G.projectiles = G.projectiles.filter(p => p.isMine);
+        // Pas de projectiles adverses, on reset la liste
+        G.projectiles = myProjs;
         G.opponentProjectileIds.clear();
         return;
     }
     
-    const currentOppIds = new Set(oppProjs.map(p => p.id));
+    // Reconstruire les projectiles adverses depuis Firebase - ZÉRO DOUBLON
+    const syncedOpponentProjs = oppProjs.map(proj => ({
+        id: proj.id,
+        x: proj.x,
+        y: proj.y,
+        vx: proj.vx,
+        vy: proj.vy,
+        damage: proj.damage,
+        type: proj.type,
+        color: proj.color,
+        size: proj.size,
+        life: proj.life,
+        isMine: false,
+        isOpponent: true
+    }));
     
-    // Supprimer les projectiles adverses qui n'existent plus dans Firebase
-    G.projectiles = G.projectiles.filter(p => {
-        if (p.isMine) return true; // Garder nos propres projectiles
-        return currentOppIds.has(p.id); // Garder seulement les projectiles adverses encore dans Firebase
-    });
+    // Remplacer complètement la liste: nos projectiles + projectiles adverses synced
+    G.projectiles = [...myProjs, ...syncedOpponentProjs];
     
-    // Ajouter les nouveaux projectiles adverses
-    for (const proj of oppProjs) {
-        if (!G.opponentProjectileIds.has(proj.id)) {
-            G.projectiles.push({
-                ...proj,
-                isMine: false,
-                isOpponent: true
-            });
-            G.opponentProjectileIds.add(proj.id);
-        }
+    // Mettre à jour le Set des IDs
+    G.opponentProjectileIds.clear();
+    for (const proj of syncedOpponentProjs) {
+        G.opponentProjectileIds.add(proj.id);
     }
 }
 
@@ -943,7 +1233,9 @@ function updateTimerUI() {
 
 function updateHpBars() {
     setBar('player-hp', 'player-hp-text', G.player.hp, G.player.maxHp);
-    setBar('opponent-hp', 'opponent-hp-text', G.opponent.hp, G.opponent.maxHp);
+    if (G.opponent) {
+        setBar('opponent-hp', 'opponent-hp-text', G.opponent.hp, G.opponent.maxHp);
+    }
 }
 
 function setBar(fillId, txtId, hp, maxHp) {
@@ -1080,22 +1372,40 @@ function update() {
     if (G.keys['d']) vx += spd;
     if (vx !== 0 && vy !== 0) { vx *= 0.7071; vy *= 0.7071; }
 
-    G.player.x = Math.max(G.player.radius, Math.min(G.canvas.width  - G.player.radius, G.player.x + vx));
-    G.player.y = Math.max(G.player.radius, Math.min(G.canvas.height - G.player.radius, G.player.y + vy));
+    // Appliquer le mouvement
+    let newX = G.player.x + vx;
+    let newY = G.player.y + vy;
+    
+    // Contraintes limites du canvas
+    newX = Math.max(G.player.radius, Math.min(G.canvas.width  - G.player.radius, newX));
+    newY = Math.max(G.player.radius, Math.min(G.canvas.height - G.player.radius, newY));
+    
+    // Collision avec murs désactivée - mode zombie/multijoueur sans obstacles
+    G.player.x = newX;
+    G.player.y = newY;
 
     if (vx !== 0 || vy !== 0) {
         const now = Date.now();
         if (now - G.lastPosSend >= 50) {
             G.lastPosSend = now;
-            RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}`).update({
-                x: Math.round(G.player.x),
-                y: Math.round(G.player.y)
-            });
+            if (G.opponent) { // Seulement en multijoueur
+                RTDB.ref(`active_matches/${G.matchId}/gameState/${G.isPlayer1 ? 'player1' : 'player2'}`).update({
+                    x: Math.round(G.player.x),
+                    y: Math.round(G.player.y)
+                });
+            }
         }
     }
 
-    G.opponent.x += (G.opponent.targetX - G.opponent.x) * 0.2;
-    G.opponent.y += (G.opponent.targetY - G.opponent.y) * 0.2;
+    if (G.opponent) {
+        G.opponent.x += (G.opponent.targetX - G.opponent.x) * 0.2;
+        G.opponent.y += (G.opponent.targetY - G.opponent.y) * 0.2;
+    }
+    
+    // ✅ NOUVEAU : Gestion des zombies en mode zombie
+    if (G.gameMode === 'zombie') {
+        updateZombieMode();
+    }
 
     for (let i = G.projectiles.length - 1; i >= 0; i--) {
         const proj = G.projectiles[i];
@@ -1115,24 +1425,55 @@ function update() {
             continue;
         }
 
+        // ✅ Détection de collision avec les murs (DÉSACTIVÉ)
+        // if (checkProjectileWallCollision(proj)) {
+        //     spawnHitParticles(proj.x, proj.y, proj.type);
+        //     if (!proj.isMine) G.opponentProjectileIds.delete(proj.id);
+        //     G.projectiles.splice(i, 1);
+        //     continue;
+        // }
+
         if (proj.isMine) {
-            const dx = G.opponent.x - proj.x;
-            const dy = G.opponent.y - proj.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            
-            if (dist < G.opponent.radius + 5) {
-                console.log('💥 PROJECTILE HIT!', proj.damage + 'dmg');
-                spawnHitParticles(proj.x, proj.y, proj.type);
-                flashHit(proj.type);
+            if (G.gameMode === 'zombie') {
+                // Collision avec les zombies
+                for (let z = 0; z < G.zombies.length; z++) {
+                    const zombie = G.zombies[z];
+                    const dx = zombie.x - proj.x;
+                    const dy = zombie.y - proj.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    
+                    if (dist < zombie.radius + 5) {
+                        zombie.hp -= proj.damage;
+                        spawnHitParticles(proj.x, proj.y, proj.type);
+                        flashHit(proj.type);
+                        G.projectiles.splice(i, 1);
+                        
+                        if (zombie.hp <= 0) {
+                            G.zombies.splice(z, 1);
+                        }
+                        return; // Sortir de la boucle des projectiles
+                    }
+                }
+            } else if (G.opponent) {
+                // Collision avec l'opponent (multijoueur)
+                const dx = G.opponent.x - proj.x;
+                const dy = G.opponent.y - proj.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
                 
-                const oppK = G.isPlayer1 ? 'player2' : 'player1';
-                RTDB.ref(`active_matches/${G.matchId}/gameState/${oppK}/hp`).transaction(cur => {
-                    if (cur === null) return 0;
-                    return Math.max(0, cur - proj.damage);
-                });
-                
-                G.projectiles.splice(i, 1);
-                continue;
+                if (dist < G.opponent.radius + 5) {
+                    console.log('💥 PROJECTILE HIT!', proj.damage + 'dmg');
+                    spawnHitParticles(proj.x, proj.y, proj.type);
+                    flashHit(proj.type);
+                    
+                    const oppK = G.isPlayer1 ? 'player2' : 'player1';
+                    RTDB.ref(`active_matches/${G.matchId}/gameState/${oppK}/hp`).transaction(cur => {
+                        if (cur === null) return 0;
+                        return Math.max(0, cur - proj.damage);
+                    });
+                    
+                    G.projectiles.splice(i, 1);
+                    continue;
+                }
             }
         }
     }
@@ -1151,14 +1492,23 @@ function update() {
    ATTAQUE (AVEC PROJECTILES)
    ============================================= */
 function doAttack(type) {
-    if (G.matchEnded || !G.player || !G.opponent) return;
+    if (G.matchEnded || !G.player) return;
+    // En mode multijoueur, on a besoin d'un opponent
+    if (G.gameMode !== 'zombie' && !G.opponent) return;
+    
     const now = Date.now();
-    if (type === 'normal') {
-        if (now - G.lastAtkTime < G.player.atkCd) return;
-        G.lastAtkTime = now;
+    // ✅ EN MODE ZOMBIE: TIRS INFINIS SANS COOLDOWN
+    if (G.gameMode === 'zombie') {
+        // Pas de cooldown en mode zombie - tirs infinis!
     } else {
-        if (now - G.lastSpeTime < G.player.speCd) return;
-        G.lastSpeTime = now;
+        // Mode multijoueur: vérifier les cooldowns normaux
+        if (type === 'normal') {
+            if (now - G.lastAtkTime < G.player.atkCd) return;
+            G.lastAtkTime = now;
+        } else {
+            if (now - G.lastSpeTime < G.player.speCd) return;
+            G.lastSpeTime = now;
+        }
     }
 
     const range  = type === 'normal' ? G.player.atkRange  : G.player.speRange;
@@ -1186,7 +1536,10 @@ function doAttack(type) {
     spawnAtkParticles(G.player.x, G.player.y, 
         Math.cos(G.aimAngle), Math.sin(G.aimAngle), type);
 
-    syncProjectilesToFirebase();
+    // Synchroniser seulement en multijoueur
+    if (G.gameMode !== 'zombie') {
+        syncProjectilesToFirebase();
+    }
 
     console.log('🎯 PROJECTILE LANCÉ', type, '→', G.aimAngle);
 }
@@ -1276,6 +1629,22 @@ function render() {
 
     if (G.opponent) drawEntity(ctx, G.opponent);
     if (G.player) drawEntity(ctx, G.player);
+
+    // ✅ NOUVEAU : Dessiner les zombies en mode zombie
+    for (const zombie of G.zombies) {
+        ctx.save();
+        ctx.fillStyle = zombie.color || '#00aa00';
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = zombie.color || '#00aa00';
+        ctx.beginPath();
+        ctx.arc(zombie.x, zombie.y, zombie.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.6;
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+    }
 
     for (const proj of G.projectiles) {
         ctx.save();
@@ -1581,6 +1950,9 @@ function cleanupGame() {
     G.particles = [];
     G.projectiles = [];
     G.opponentProjectileIds.clear(); // ✅ RESET du Set
+    G.walls = []; // ✅ RESET des murs
+    G.zombies = []; // ✅ RESET des zombies
+    G.gameMode = null; // ✅ RESET du mode
 }
 
 // ✅ CORRECTION 2 : fullCleanup (ligne ~640)
