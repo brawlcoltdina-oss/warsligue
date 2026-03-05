@@ -20,7 +20,24 @@ const CHARACTERS = {
         radius: 24,
         locked: false,
         price: 0,
-        rarity: 'common'
+        rarity: 'common',
+        upgrades: {
+            hp: [
+                { level: 1, cost: 50, increment: 15 },
+                { level: 2, cost: 100, increment: 20 },
+                { level: 3, cost: 150, increment: 25 }
+            ],
+            speed: [
+                { level: 1, cost: 50, increment: 1 },
+                { level: 2, cost: 100, increment: 1.5 },
+                { level: 3, cost: 150, increment: 2 }
+            ],
+            attackDamage: [
+                { level: 1, cost: 50, increment: 2 },
+                { level: 2, cost: 100, increment: 3 },
+                { level: 3, cost: 150, increment: 4 }
+            ]
+        }
     },
     assassin: {
         name: "Assassin",
@@ -39,7 +56,24 @@ const CHARACTERS = {
         radius: 20,
         locked: false,
         price: 0,
-        rarity: 'common'
+        rarity: 'common',
+        upgrades: {
+            hp: [
+                { level: 1, cost: 50, increment: 12 },
+                { level: 2, cost: 100, increment: 15 },
+                { level: 3, cost: 150, increment: 18 }
+            ],
+            speed: [
+                { level: 1, cost: 50, increment: 1.5 },
+                { level: 2, cost: 100, increment: 2 },
+                { level: 3, cost: 150, increment: 2.5 }
+            ],
+            attackDamage: [
+                { level: 1, cost: 50, increment: 2.5 },
+                { level: 2, cost: 100, increment: 3.5 },
+                { level: 3, cost: 150, increment: 4.5 }
+            ]
+        }
     },
     mage: {
         name: "Mage",
@@ -58,7 +92,24 @@ const CHARACTERS = {
         radius: 22,
         locked: false,
         price: 0,
-        rarity: 'common'
+        rarity: 'common',
+        upgrades: {
+            hp: [
+                { level: 1, cost: 50, increment: 12 },
+                { level: 2, cost: 100, increment: 16 },
+                { level: 3, cost: 150, increment: 20 }
+            ],
+            speed: [
+                { level: 1, cost: 50, increment: 0.8 },
+                { level: 2, cost: 100, increment: 1 },
+                { level: 3, cost: 150, increment: 1.2 }
+            ],
+            attackDamage: [
+                { level: 1, cost: 50, increment: 2.2 },
+                { level: 2, cost: 100, increment: 3 },
+                { level: 3, cost: 150, increment: 4 }
+            ]
+        }
     },
     tank: {
         name: "Tank",
@@ -78,7 +129,24 @@ const CHARACTERS = {
         locked: true,
         price: 500,
         description: "Résistant mais lent",
-        rarity: 'rare'
+        rarity: 'rare',
+        upgrades: {
+            hp: [
+                { level: 1, cost: 60, increment: 25 },
+                { level: 2, cost: 120, increment: 30 },
+                { level: 3, cost: 180, increment: 35 }
+            ],
+            speed: [
+                { level: 1, cost: 60, increment: 0.5 },
+                { level: 2, cost: 120, increment: 0.7 },
+                { level: 3, cost: 180, increment: 1 }
+            ],
+            attackDamage: [
+                { level: 1, cost: 60, increment: 1.5 },
+                { level: 2, cost: 120, increment: 2 },
+                { level: 3, cost: 180, increment: 2.5 }
+            ]
+        }
     },
     ninja: {
         name: "Ninja",
@@ -98,7 +166,24 @@ const CHARACTERS = {
         locked: true,
         price: 750,
         description: "Ultra rapide et mortel",
-        rarity: 'rare'
+        rarity: 'rare',
+        upgrades: {
+            hp: [
+                { level: 1, cost: 60, increment: 10 },
+                { level: 2, cost: 120, increment: 12 },
+                { level: 3, cost: 180, increment: 15 }
+            ],
+            speed: [
+                { level: 1, cost: 60, increment: 2 },
+                { level: 2, cost: 120, increment: 2.5 },
+                { level: 3, cost: 180, increment: 3 }
+            ],
+            attackDamage: [
+                { level: 1, cost: 60, increment: 3 },
+                { level: 2, cost: 120, increment: 4 },
+                { level: 3, cost: 180, increment: 5 }
+            ]
+        }
     },
     necromancer: {
         name: "Necromancer",
@@ -118,7 +203,24 @@ const CHARACTERS = {
         locked: true,
         price: 1000,
         description: "Maître de la magie noire",
-        rarity: 'epic'
+        rarity: 'epic',
+        upgrades: {
+            hp: [
+                { level: 1, cost: 70, increment: 12 },
+                { level: 2, cost: 140, increment: 16 },
+                { level: 3, cost: 210, increment: 20 }
+            ],
+            speed: [
+                { level: 1, cost: 70, increment: 0.8 },
+                { level: 2, cost: 140, increment: 1.2 },
+                { level: 3, cost: 210, increment: 1.5 }
+            ],
+            attackDamage: [
+                { level: 1, cost: 70, increment: 2.5 },
+                { level: 2, cost: 140, increment: 3.5 },
+                { level: 3, cost: 210, increment: 4.5 }
+            ]
+        }
     },
     paladin: {
         name: "Paladin",
@@ -138,7 +240,24 @@ const CHARACTERS = {
         locked: true,
         price: 1200,
         description: "Équilibré et puissant",
-        rarity: 'epic'
+        rarity: 'epic',
+        upgrades: {
+            hp: [
+                { level: 1, cost: 70, increment: 18 },
+                { level: 2, cost: 140, increment: 22 },
+                { level: 3, cost: 210, increment: 26 }
+            ],
+            speed: [
+                { level: 1, cost: 70, increment: 1 },
+                { level: 2, cost: 140, increment: 1.3 },
+                { level: 3, cost: 210, increment: 1.6 }
+            ],
+            attackDamage: [
+                { level: 1, cost: 70, increment: 2 },
+                { level: 2, cost: 140, increment: 3 },
+                { level: 3, cost: 210, increment: 4 }
+            ]
+        }
     },
     dragon: {
         name: "Dragon Knight",
@@ -158,7 +277,24 @@ const CHARACTERS = {
         locked: true,
         price: 1500,
         description: "Puissance draconique",
-        rarity: 'legendary'
+        rarity: 'legendary',
+        upgrades: {
+            hp: [
+                { level: 1, cost: 80, increment: 20 },
+                { level: 2, cost: 160, increment: 25 },
+                { level: 3, cost: 240, increment: 30 }
+            ],
+            speed: [
+                { level: 1, cost: 80, increment: 1.2 },
+                { level: 2, cost: 160, increment: 1.5 },
+                { level: 3, cost: 240, increment: 1.8 }
+            ],
+            attackDamage: [
+                { level: 1, cost: 80, increment: 3 },
+                { level: 2, cost: 160, increment: 4 },
+                { level: 3, cost: 240, increment: 5 }
+            ]
+        }
     }
 };
 

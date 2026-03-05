@@ -1628,3 +1628,163 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     margin-top: 1rem;
     min-width: 200px;
 }
+
+/* ========================================
+   POWER POINTS & UPGRADES
+   ======================================== */
+
+/* Power Points in player header */
+.power-points {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #FFD700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.power-icon {
+    font-size: 1.3rem;
+}
+
+/* Chests screen currencies */
+.chests-currencies {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.player-powerpoints {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #FFD700;
+}
+
+/* Upgrades Panel */
+#upgrades-panel {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+#upgrades-panel.active {
+    display: flex;
+    pointer-events: auto;
+}
+
+#upgrades-panel .panel-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 1;
+}
+
+#upgrades-panel .panel-content {
+    position: fixed;
+    right: -100%;
+    top: 0;
+    width: 100%;
+    max-width: 500px;
+    height: 100%;
+    background: linear-gradient(135deg, var(--dark-bg), var(--darker-bg));
+    border-left: 2px solid var(--primary);
+    overflow-y: auto;
+    transition: right 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    box-shadow: var(--shadow);
+    z-index: 2;
+}
+
+#upgrades-panel.active .panel-content {
+    right: 0;
+}
+
+/* Upgrades info section */
+.upgrades-info {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255, 51, 102, 0.2);
+    background: rgba(255, 51, 102, 0.05);
+}
+
+.upgrade-current-char {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 1.1rem;
+}
+
+/* Upgrades container */
+.upgrades-container {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.upgrade-section {
+    background: rgba(100, 100, 150, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    border-left: 4px solid var(--secondary);
+}
+
+.upgrade-stat-title {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.upgrade-levels {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.upgrade-card {
+    background: rgba(50, 50, 100, 0.3);
+    border: 2px solid #666;
+    border-radius: 8px;
+    padding: 12px;
+    transition: all 0.3s ease;
+    cursor: not-allowed;
+}
+
+.upgrade-card.available {
+    border-color: #FFD700;
+    background: rgba(255, 215, 0, 0.05);
+    cursor: pointer;
+}
+
+.upgrade-card.available:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+    background: rgba(255, 215, 0, 0.15);
+}
+
+.upgrade-card.maxed {
+    border-color: #2ECC71;
+    background: rgba(46, 204, 113, 0.05);
+    opacity: 0.8;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #upgrades-panel .panel-content {
+        max-width: 100%;
+    }
+    
+    .power-points {
+        font-size: 0.95rem;
+    }
+    
+    .upgrade-section {
+        padding: 12px;
+    }
+}

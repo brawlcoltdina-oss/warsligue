@@ -82,6 +82,10 @@
                         <span class="gold-icon">💰</span>
                         <span id="player-gold">0</span>
                     </div>
+                    <div class="power-points">
+                        <span class="power-icon">⚡</span>
+                        <span id="player-powerpoints">0</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -132,6 +136,9 @@
             </button>
             <button id="chests-btn" class="btn-large btn-secondary">
                 <span class="btn-icon">📦</span><span>COFFRES</span>
+            </button>
+            <button id="upgrades-btn" class="btn-large btn-secondary">
+                <span class="btn-icon">⚡</span><span>AMÉLIORATIONS</span>
             </button>
             <button id="leaderboard-btn" class="btn-large btn-secondary">
                 <span class="btn-icon">🏅</span><span>CLASSEMENT</span>
@@ -239,14 +246,55 @@
     </div>
 </div>
 
+<!-- ===================== UPGRADES PANEL ===================== -->
+<div id="upgrades-panel" class="side-panel">
+    <div class="panel-overlay" id="upgrades-panel-overlay"></div>
+    <div class="panel-content">
+        <div class="panel-header">
+            <h2 class="panel-title">⚡ AMÉLIORATIONS</h2>
+            <button id="close-upgrades-panel" class="btn-close">✕</button>
+        </div>
+        
+        <div class="upgrades-info">
+            <div class="upgrade-current-char">
+                <span id="upgrade-char-name" style="font-weight: bold; font-size: 1.2em;">Warrior</span>
+                <span id="upgrade-powerpoints-display" style="color: #FFD700; margin-left: 10px;">⚡ 0 points</span>
+            </div>
+        </div>
+        
+        <div class="upgrades-container">
+            <div class="upgrade-section">
+                <h3 class="upgrade-stat-title">❤️ VIE (HP)</h3>
+                <div id="upgrade-hp-levels" class="upgrade-levels"></div>
+            </div>
+            
+            <div class="upgrade-section">
+                <h3 class="upgrade-stat-title">⚡ VITESSE</h3>
+                <div id="upgrade-speed-levels" class="upgrade-levels"></div>
+            </div>
+            
+            <div class="upgrade-section">
+                <h3 class="upgrade-stat-title">⚔️ DÉGÂTS</h3>
+                <div id="upgrade-damage-levels" class="upgrade-levels"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ===================== CHESTS SCREEN ===================== -->
 <div id="chests-screen" class="screen">
     <div class="chests-container">
         <div class="chests-header">
             <h2 class="screen-title">📦 Coffres</h2>
-            <div class="player-coins">
-                <span class="coin-icon">💰</span>
-                <span id="chests-gold">0</span>
+            <div class="chests-currencies">
+                <div class="player-coins">
+                    <span class="coin-icon">💰</span>
+                    <span id="chests-gold">0</span>
+                </div>
+                <div class="player-powerpoints">
+                    <span class="power-icon">⚡</span>
+                    <span id="chests-powerpoints">0</span>
+                </div>
             </div>
         </div>
 

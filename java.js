@@ -214,6 +214,7 @@ async function ensurePlayerDoc(user) {
             ownedCharacters: ['warrior', 'assassin', 'mage'],
             ownedSkins: [],
             powerPoints: {},
+            upgrades: {},
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -230,6 +231,9 @@ async function ensurePlayerDoc(user) {
         }
         if (!data.powerPoints) {
             updates.powerPoints = {};
+        }
+        if (!data.upgrades) {
+            updates.upgrades = {};
         }
         
         await FSDB.collection('players').doc(user.uid).update(updates);
@@ -259,6 +263,14 @@ function updateMenuUI() {
     document.getElementById('player-trophies').textContent = G.playerData.trophies || 0;
     document.getElementById('player-gold').textContent     = G.playerData.gold || 0;
     document.getElementById('player-avatar').textContent   = G.playerData.username[0].toUpperCase();
+    
+    // Update power points for selected character
+    const selectedChar = G.selectedChar || 'warrior';
+    const charPowerPoints = (G.playerData.powerPoints && G.playerData.powerPoints[selectedChar]) || 0;
+    const ppElement = document.getElementById('player-powerpoints');
+    if (ppElement) {
+        ppElement.textContent = charPowerPoints;
+    }
 }
 
 /* =============================================
@@ -304,7 +316,8 @@ function renderCharacterSelector() {
 }
 
 function updateCharacterPreview(charKey) {
-    const char = CHARACTERS[charKey] || CHARACTERS.warrior;
+    const baseChar = CHARACTERS[charKey] || CHARACTERS.warrior;
+    const char = getCharacterWithUpgrades(charKey, G.playerData);
     
     const previewIcon = document.getElementById('preview-icon');
     const previewName = document.getElementById('preview-name');
@@ -313,15 +326,15 @@ function updateCharacterPreview(charKey) {
     const previewDamage = document.getElementById('preview-damage');
     
     if (previewIcon) {
-        previewIcon.innerHTML = `<img src="${char.image}" alt="${char.name}" style="width: 80%; height: 80%; object-fit: contain;">`;
-        previewIcon.style.background = char.color;
-        previewIcon.style.boxShadow = `0 0 40px ${char.glowColor}`;
+        previewIcon.innerHTML = `<img src="${baseChar.image}" alt="${baseChar.name}" style="width: 80%; height: 80%; object-fit: contain;">`;
+        previewIcon.style.background = baseChar.color;
+        previewIcon.style.boxShadow = `0 0 40px ${baseChar.glowColor}`;
     }
     
-    if (previewName) previewName.textContent = char.name;
-    if (previewHp) previewHp.textContent = char.hp;
-    if (previewSpeed) previewSpeed.textContent = char.speed;
-    if (previewDamage) previewDamage.textContent = char.attackDamage;
+    if (previewName) previewName.textContent = baseChar.name;
+    if (previewHp) previewHp.textContent = Math.round(char.hp * 10) / 10;
+    if (previewSpeed) previewSpeed.textContent = Math.round(char.speed * 10) / 10;
+    if (previewDamage) previewDamage.textContent = Math.round(char.attackDamage * 10) / 10;
 }
 
 function selectCharacter(key) {
@@ -365,6 +378,226 @@ function closeCharacterPanel() {
 }
 
 /* =============================================
+   UPGRADES PANEL & SYSTEM
+   ============================================= */
+console.log('🔍 Initialisation des event listeners des améliorations...');
+
+const upgradesBtn = document.getElementById('upgrades-btn');
+console.log('🔘 Bouton upgrades trouvé:', upgradesBtn ? '✅ Oui' : '❌ Non');
+if (upgradesBtn) {
+    upgradesBtn.addEventListener('click', () => {
+        console.log('🎯 Clic sur le bouton améliorations détecté');
+        openUpgradesPanel();
+    });
+    console.log('✅ Event listener attaché au bouton upgrades');
+}
+
+const closeUpgradesBtn = document.getElementById('close-upgrades-panel');
+console.log('🔘 Bouton fermer upgrades trouvé:', closeUpgradesBtn ? '✅ Oui' : '❌ Non');
+if (closeUpgradesBtn) {
+    closeUpgradesBtn.addEventListener('click', closeUpgradesPanel);
+    console.log('✅ Event listener attaché au bouton fermer upgrades');
+}
+
+const upgradesPanelOverlay = document.getElementById('upgrades-panel-overlay');
+console.log('🔘 Overlay upgrades trouvé:', upgradesPanelOverlay ? '✅ Oui' : '❌ Non');
+if (upgradesPanelOverlay) {
+    upgradesPanelOverlay.addEventListener('click', closeUpgradesPanel);
+    console.log('✅ Event listener attaché à l\'overlay upgrades');
+}
+
+function openUpgradesPanel() {
+    console.log('🔧 Ouverture du panel d\'améliorations');
+    try {
+        // Vérifier que les données nécessaires existent
+        if (!CHARACTERS) {
+            console.error('❌ CHARACTERS n\'est pas défini');
+            return;
+        }
+        
+        const selectedChar = G.selectedChar || 'warrior';
+        console.log('📊 Personnage sélectionné:', selectedChar);
+        
+        const charPowerPoints = (G.playerData && G.playerData.powerPoints && G.playerData.powerPoints[selectedChar]) || 0;
+        const charUpgrades = (G.playerData && G.playerData.upgrades && G.playerData.upgrades[selectedChar]) || {};
+        
+        console.log('⚡ Points de pouvoir:', charPowerPoints);
+        console.log('📈 Améliorations actuelles:', charUpgrades);
+        
+        // Update panel header with character name and power points
+        const charNameEl = document.getElementById('upgrade-char-name');
+        const powerPointsEl = document.getElementById('upgrade-powerpoints-display');
+        
+        if (charNameEl) {
+            charNameEl.textContent = CHARACTERS[selectedChar].name;
+            console.log('✅ Nom du personnage mis à jour');
+        } else {
+            console.warn('⚠️ Élément upgrade-char-name non trouvé');
+        }
+        
+        if (powerPointsEl) {
+            powerPointsEl.textContent = `⚡ ${charPowerPoints} points`;
+            console.log('✅ Points de pouvoir affichés');
+        } else {
+            console.warn('⚠️ Élément upgrade-powerpoints-display non trouvé');
+        }
+        
+        // Render upgrade levels for each stat
+        console.log('🎨 Rendu des niveaux d\'amélioration...');
+        renderUpgradeStatLevels('hp', selectedChar, charPowerPoints, charUpgrades);
+        renderUpgradeStatLevels('speed', selectedChar, charPowerPoints, charUpgrades);
+        renderUpgradeStatLevels('attackDamage', selectedChar, charPowerPoints, charUpgrades);
+        
+        const upgradesPanel = document.getElementById('upgrades-panel');
+        if (upgradesPanel) {
+            upgradesPanel.classList.add('active');
+            console.log('✅ Panel d\'améliorations ouvert avec succès');
+        } else {
+            console.error('❌ Élément upgrades-panel non trouvé');
+        }
+    } catch (e) {
+        console.error('❌ Erreur ouverture upgrades panel:', e);
+        alert('Erreur: ' + e.message);
+    }
+}
+
+function closeUpgradesPanel() {
+    document.getElementById('upgrades-panel').classList.remove('active');
+}
+
+function renderUpgradeStatLevels(stat, charKey, powerPoints, charUpgrades) {
+    try {
+        const char = CHARACTERS[charKey];
+        if (!char || !char.upgrades || !char.upgrades[stat]) {
+            console.warn(`⚠️ Pas d'upgrades pour ${charKey}.${stat}`);
+            return;
+        }
+        
+        const upgrades = char.upgrades[stat] || [];
+        const container = document.getElementById(`upgrade-${stat}-levels`);
+        
+        if (!container) {
+            console.warn(`⚠️ Conteneur upgrade-${stat}-levels non trouvé`);
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        const currentLevel = (charUpgrades[stat] && charUpgrades[stat].level) || 0;
+        
+        upgrades.forEach((upgrade) => {
+            const isMaxLevel = currentLevel >= upgrade.level;
+            const canAfford = powerPoints >= upgrade.cost && currentLevel < upgrade.level;
+            
+            const card = document.createElement('div');
+            card.className = `upgrade-card ${isMaxLevel ? 'maxed' : ''} ${canAfford ? 'available' : ''}`;
+            card.style.cssText = `
+                border: 2px solid ${isMaxLevel ? '#2ECC71' : canAfford ? '#FFD700' : '#666'};
+                background: ${isMaxLevel ? 'rgba(46,204,113,0.1)' : canAfford ? 'rgba(255,215,0,0.1)' : 'rgba(100,100,100,0.1)'};
+                padding: 12px;
+                border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: ${canAfford ? 'pointer' : 'not-allowed'};
+            opacity: ${canAfford || isMaxLevel ? '1' : '0.6'};
+        `;
+        
+        const baseValue = char[stat];
+        const displayValue = baseValue + (upgrade.increment * upgrade.level);
+        
+        let statusText = '';
+        if (isMaxLevel) {
+            statusText = '✅ NIVEAU MAXIMAL';
+        } else if (canAfford) {
+            statusText = '🔓 ACHETER';
+        } else {
+            statusText = '🔒 Pas assez';
+        }
+        
+        card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: bold; margin-bottom: 4px;">Niveau ${upgrade.level}</div>
+                    <div style="font-size: 0.9em; color: #ccc;">
+                        ${baseValue} → ${displayValue} (+${upgrade.increment})
+                    </div>
+                    <div style="font-size: 0.85em; color: #FFD700; margin-top: 4px;">⚡ Coût: ${upgrade.cost}</div>
+                </div>
+                <div style="text-align: right; font-size: 0.9em;">
+                    ${statusText}
+                </div>
+            </div>
+        `;
+        
+        if (canAfford && !isMaxLevel) {
+            card.addEventListener('click', () => {
+                applyUpgrade(charKey, stat, upgrade.level, upgrade.cost);
+            });
+            card.style.cursor = 'pointer';
+            card.style.transition = 'all 0.3s ease';
+            card.addEventListener('mouseover', () => {
+                card.style.transform = 'translateY(-2px)';
+                card.style.boxShadow = '0 4px 12px rgba(255,215,0,0.3)';
+            });
+            card.addEventListener('mouseout', () => {
+                card.style.transform = 'translateY(0)';
+                card.style.boxShadow = 'none';
+            });
+        }
+        
+        container.appendChild(card);
+        });
+    } catch (e) {
+        console.error(`❌ Erreur rendu upgrades ${stat}:`, e);
+    }
+}
+
+async function applyUpgrade(charKey, stat, level, cost) {
+    if (!G.user || !G.playerData) return;
+    
+    const selectedChar = G.selectedChar || 'warrior';
+    if (charKey !== selectedChar) {
+        alert('Vous pouvez seulement améliorer le personnage sélectionné !');
+        return;
+    }
+    
+    const currentPowerPoints = (G.playerData.powerPoints && G.playerData.powerPoints[selectedChar]) || 0;
+    
+    if (currentPowerPoints < cost) {
+        alert('Vous n\'avez pas assez de points de pouvoir !');
+        return;
+    }
+    
+    try {
+        // Initialize upgrades structure if needed
+        const upgrades = G.playerData.upgrades || {};
+        if (!upgrades[selectedChar]) {
+            upgrades[selectedChar] = {};
+        }
+        
+        // Update upgrades and power points
+        const updates = {};
+        updates[`upgrades.${selectedChar}.${stat}`] = {
+            level: level,
+            appliedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        updates[`powerPoints.${selectedChar}`] = currentPowerPoints - cost;
+        
+        await FSDB.collection('players').doc(G.user.uid).update(updates);
+        
+        console.log(`✅ Amélioration appliquée: ${charKey} - ${stat} niveau ${level}`);
+        
+        // Refresh the upgrades panel
+        setTimeout(() => {
+            openUpgradesPanel();
+        }, 300);
+        
+    } catch (e) {
+        console.error('❌ Erreur amélioration:', e);
+        alert('Erreur lors de l\'amélioration');
+    }
+}
+
+/* =============================================
    CHESTS SYSTEM
    ============================================= */
 document.getElementById('chests-btn').addEventListener('click', openChests);
@@ -373,6 +606,15 @@ document.getElementById('close-chests').addEventListener('click', () => showScre
 async function openChests() {
     showScreen('chests-screen');
     document.getElementById('chests-gold').textContent = G.playerData ? (G.playerData.gold || 0) : 0;
+    
+    // Display power points for selected character in chests screen
+    const selectedChar = G.selectedChar || 'warrior';
+    const charPowerPoints = (G.playerData && G.playerData.powerPoints && G.playerData.powerPoints[selectedChar]) || 0;
+    const chestsPPElement = document.getElementById('chests-powerpoints');
+    if (chestsPPElement) {
+        chestsPPElement.textContent = charPowerPoints;
+    }
+    
     renderChestsGrid();
 }
 
@@ -484,6 +726,17 @@ async function applyChestReward(reward) {
         gold: firebase.firestore.FieldValue.increment(reward.gold)
     };
     
+    // Add power points - initialize powerPoints structure if needed
+    if (!G.playerData.powerPoints) {
+        G.playerData.powerPoints = {};
+    }
+    
+    const selectedChar = G.selectedChar || 'warrior';
+    const currentPowerPoints = (G.playerData.powerPoints && G.playerData.powerPoints[selectedChar]) || 0;
+    
+    // Update power points for selected character
+    updates[`powerPoints.${selectedChar}`] = currentPowerPoints + reward.powerPoints;
+    
     if (reward.character && reward.isNew) {
         updates.ownedCharacters = firebase.firestore.FieldValue.arrayUnion(reward.character);
     }
@@ -531,6 +784,46 @@ document.getElementById('reward-overlay').addEventListener('click', () => {
     renderChestsGrid();
 });
 
+
+/* =============================================
+   CHARACTER STATS WITH UPGRADES
+   ============================================= */
+function getCharacterWithUpgrades(charKey, playerData) {
+    const baseChar = CHARACTERS[charKey] || CHARACTERS.warrior;
+    const charCopy = { ...baseChar };
+    
+    if (!playerData || !playerData.upgrades || !playerData.upgrades[charKey]) {
+        return charCopy;
+    }
+    
+    const upgrades = playerData.upgrades[charKey];
+    
+    // Apply HP upgrades
+    if (upgrades.hp && upgrades.hp.level > 0) {
+        const upgradeData = baseChar.upgrades.hp.find(u => u.level === upgrades.hp.level);
+        if (upgradeData) {
+            charCopy.hp = baseChar.hp + (upgradeData.increment * upgrades.hp.level);
+        }
+    }
+    
+    // Apply Speed upgrades
+    if (upgrades.speed && upgrades.speed.level > 0) {
+        const upgradeData = baseChar.upgrades.speed.find(u => u.level === upgrades.speed.level);
+        if (upgradeData) {
+            charCopy.speed = baseChar.speed + (upgradeData.increment * upgrades.speed.level);
+        }
+    }
+    
+    // Apply Attack Damage upgrades
+    if (upgrades.attackDamage && upgrades.attackDamage.level > 0) {
+        const upgradeData = baseChar.upgrades.attackDamage.find(u => u.level === upgrades.attackDamage.level);
+        if (upgradeData) {
+            charCopy.attackDamage = baseChar.attackDamage + (upgradeData.increment * upgrades.attackDamage.level);
+        }
+    }
+    
+    return charCopy;
+}
 
 /* =============================================
    MODE SELECTION
@@ -773,7 +1066,7 @@ function initGame(matchData) {
     // En mode zombie, on n'a pas d'opponent
     if (G.gameMode === 'zombie') {
         const myKey = G.selectedChar || 'warrior';
-        const myC = CHARACTERS[myKey] || CHARACTERS.warrior;
+        const myC = getCharacterWithUpgrades(myKey, G.playerData);
 
         G.player = {
             x: G.canvas.width / 2,
@@ -796,7 +1089,7 @@ function initGame(matchData) {
         // Mode multijoueur normal
         const myKey  = G.isPlayer1 ? matchData.player1Char : matchData.player2Char;
         const oppKey = G.isPlayer1 ? matchData.player2Char : matchData.player1Char;
-        const myC    = CHARACTERS[myKey]  || CHARACTERS.warrior;
+        const myC    = getCharacterWithUpgrades(myKey, G.playerData);
         const oppC   = CHARACTERS[oppKey] || CHARACTERS.warrior;
 
         G.player = {
