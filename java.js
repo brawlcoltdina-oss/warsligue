@@ -487,7 +487,8 @@ function renderUpgradeStatLevels(stat, charKey, powerPoints, charUpgrades) {
         
         upgrades.forEach((upgrade) => {
             const isMaxLevel = currentLevel >= upgrade.level;
-            const canAfford = powerPoints >= upgrade.cost && currentLevel < upgrade.level;
+            const isNextLevel = upgrade.level === currentLevel + 1;
+            const canAfford = isNextLevel && powerPoints >= upgrade.cost;
             
             const card = document.createElement('div');
             card.className = `upgrade-card ${isMaxLevel ? 'maxed' : ''} ${canAfford ? 'available' : ''}`;
@@ -509,6 +510,8 @@ function renderUpgradeStatLevels(stat, charKey, powerPoints, charUpgrades) {
             statusText = '✅ NIVEAU MAXIMAL';
         } else if (canAfford) {
             statusText = '🔓 ACHETER';
+        } else if (!isNextLevel) {
+            statusText = '🔒 Achetez le niveau précédent';
         } else {
             statusText = '🔒 Pas assez';
         }
@@ -564,6 +567,12 @@ async function applyUpgrade(charKey, stat, level, cost) {
     
     if (currentPowerPoints < cost) {
         alert('Vous n\'avez pas assez de points de pouvoir !');
+        return;
+    }
+    
+    const currentLevel = (G.playerData.upgrades && G.playerData.upgrades[selectedChar] && G.playerData.upgrades[selectedChar][stat] && G.playerData.upgrades[selectedChar][stat].level) || 0;
+    if (level !== currentLevel + 1) {
+        alert('Vous devez acheter le niveau précédent avant de débloquer ce niveau.');
         return;
     }
     
