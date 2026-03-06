@@ -1331,7 +1331,13 @@ async function saveZombieResults(survivalTime, gold, trophy) {
         const updates = {};
         updates.gold = (G.playerData.gold || 0) + gold;
         updates.trophies = (G.playerData.trophies || 0) + trophy;
-        
+
+        const currentBest = (G.playerData.bestZombieTime || 0);
+        if (survivalTime > currentBest) {
+            updates.bestZombieTime = survivalTime;
+            G.playerData.bestZombieTime = survivalTime;
+        }
+
         await FSDB.collection('players').doc(G.user.uid).update(updates);
         
         // Sauvegarder dans un log des parties
@@ -2200,26 +2206,57 @@ document.getElementById('return-menu-btn').addEventListener('click', () => {
 /* =============================================
    LEADERBOARD
    ============================================= */
-document.getElementById('leaderboard-btn').addEventListener('click', showLeaderboard);
+document.getElementById('leaderboard-btn').addEventListener('click', () => showLeaderboard('trophies'));
 document.getElementById('close-leaderboard').addEventListener('click', () => showScreen('main-menu'));
 
-let lbCache = null, lbCacheTime = 0;
+const defaultLbMode = 'trophies';
+let currentLbMode = defaultLbMode;
+let lbCache = { trophies: null, zombie: null };
+let lbCacheTime = { trophies: 0, zombie: 0 };
 const LB_TTL = 120000;
 
-async function showLeaderboard() {
+async function showLeaderboard(mode = currentLbMode) {
+    currentLbMode = mode;
+    updateLeaderboardTabs();
     showScreen('leaderboard-screen');
-    if (lbCache && (Date.now() - lbCacheTime) < LB_TTL) { renderLB(lbCache); return; }
+
+    if (lbCache[mode] && (Date.now() - lbCacheTime[mode]) < LB_TTL) {
+        renderLB(lbCache[mode], mode);
+        return;
+    }
+
     try {
-        const snap = await FSDB.collection('players').orderBy('trophies','desc').limit(50).get();
+        let snap;
+        if (mode === 'zombie') {
+            snap = await FSDB.collection('players').orderBy('bestZombieTime','desc').limit(50).get();
+        } else {
+            snap = await FSDB.collection('players').orderBy('trophies','desc').limit(50).get();
+        }
+
         const list = [];
         snap.forEach(d => list.push({ id: d.id, ...d.data() }));
-        lbCache     = list;
-        lbCacheTime = Date.now();
-        renderLB(list);
-    } catch (e) { console.error('❌ LB:', e); }
+        lbCache[mode]     = list;
+        lbCacheTime[mode] = Date.now();
+        renderLB(list, mode);
+    } catch (e) {
+        console.error('❌ LB:', e);
+    }
 }
 
-function renderLB(players) {
+function updateLeaderboardTabs() {
+    const tabTrophies = document.getElementById('lb-tab-trophies');
+    const tabZombie   = document.getElementById('lb-tab-zombie');
+    if (tabTrophies) tabTrophies.classList.toggle('active', currentLbMode === 'trophies');
+    if (tabZombie)   tabZombie.classList.toggle('active', currentLbMode === 'zombie');
+}
+
+// Tab event listeners (si les éléments sont disponibles)
+const lbTabTrophies = document.getElementById('lb-tab-trophies');
+const lbTabZombie   = document.getElementById('lb-tab-zombie');
+if (lbTabTrophies) lbTabTrophies.addEventListener('click', () => showLeaderboard('trophies'));
+if (lbTabZombie)   lbTabZombie.addEventListener('click', () => showLeaderboard('zombie'));
+
+function renderLB(players, mode = 'trophies') {
     const ul = document.getElementById('leaderboard-list');
     ul.innerHTML = '';
     const rankCls = ['gold','silver','bronze'];
@@ -2227,11 +2264,16 @@ function renderLB(players) {
         const isMe = G.user && p.id === G.user.uid;
         const div  = document.createElement('div');
         div.className = 'leaderboard-item' + (isMe ? ' is-me' : '');
+
+        const displayValue = mode === 'zombie'
+            ? `${(p.bestZombieTime || 0)}s`
+            : `🏆 ${p.trophies||0}`;
+
         div.innerHTML =
             `<span class="lb-rank ${rankCls[i]||''}">${i+1}</span>` +
             `<div class="lb-avatar">${(p.username||'?')[0].toUpperCase()}</div>` +
             `<span class="lb-name">${p.username||'Joueur'}${isMe?' (Vous)':''}</span>` +
-            `<span class="lb-trophies">🏆 ${p.trophies||0}</span>`;
+            `<span class="lb-trophies">${displayValue}</span>`;
         ul.appendChild(div);
     });
 }

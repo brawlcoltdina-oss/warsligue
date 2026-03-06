@@ -95,6 +95,7 @@
                 <span id="online-count">0</span>
                 <span class="online-label">en ligne</span>
             </div>
+            <button id="leaderboard-btn" class="btn-icon-header" title="Classement">🏅</button>
             <button id="settings-btn" class="btn-icon-header">⚙️</button>
         </div>
     </div>
@@ -139,9 +140,6 @@
             </button>
             <button id="upgrades-btn" class="btn-large btn-secondary">
                 <span class="btn-icon">⚡</span><span>AMÉLIORATIONS</span>
-            </button>
-            <button id="leaderboard-btn" class="btn-large btn-secondary">
-                <span class="btn-icon">🏅</span><span>CLASSEMENT</span>
             </button>
         </div>
     </div>
@@ -467,6 +465,10 @@
 <div id="leaderboard-screen" class="screen">
     <div class="leaderboard-container">
         <h2 class="screen-title">🏅 Classement</h2>
+        <div class="leaderboard-tabs">
+            <button id="lb-tab-trophies" class="lb-tab active">Trophées</button>
+            <button id="lb-tab-zombie" class="lb-tab">Zombie</button>
+        </div>
         <div id="leaderboard-list" class="leaderboard-list"></div>
         <button id="close-leaderboard" class="btn-secondary">Retour</button>
     </div>
