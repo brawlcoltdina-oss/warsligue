@@ -31,7 +31,8 @@ const G = {
     myQueueKey: null,
     mmChildListener: null,
     mmChildListenerRef: null,
-    mmChildQuery: null,
+    mmChildQuery1: null,
+    mmChildQuery2: null,
     mmSearchTimer: null,
     mmCountdownId: null,
     mmSeconds: 0,
@@ -886,19 +887,23 @@ async function startMatchmaking() {
 
         console.log('🔍 Recherche adversaire... (Trophées:', G.playerData.trophies || 0, ')');
 
+        // Listen for matches involving this user (player1 OR player2).
         G.mmChildListenerRef = RTDB.ref('active_matches');
-        G.mmChildQuery = G.mmChildListenerRef.limitToLast(1);
+        G.mmChildQuery1 = G.mmChildListenerRef.orderByChild('player1Uid').equalTo(G.user.uid);
+        G.mmChildQuery2 = G.mmChildListenerRef.orderByChild('player2Uid').equalTo(G.user.uid);
+
         G.mmChildListener = (snap) => {
             const m = snap.val();
             if (!m) return;
             console.log('📢 Match détecté:', snap.key);
-            if (m.player1Uid === G.user.uid || m.player2Uid === G.user.uid) {
-                console.log('✅ C\'est notre match !');
-                stopMatchmaking();
-                enterMatch(snap.key, m);
-            }
+            stopMatchmaking();
+            enterMatch(snap.key, m);
         };
-        G.mmChildQuery.on('child_added', G.mmChildListener);
+
+        G.mmChildQuery1.on('child_added', G.mmChildListener);
+        G.mmChildQuery1.on('child_changed', G.mmChildListener);
+        G.mmChildQuery2.on('child_added', G.mmChildListener);
+        G.mmChildQuery2.on('child_changed', G.mmChildListener);
 
         scheduleSearch();
     } catch (e) {
@@ -1011,13 +1016,22 @@ async function tryPairMatch() {
 function stopMatchmaking() {
     clearTimeout(G.mmSearchTimer);   G.mmSearchTimer  = null;
     clearInterval(G.mmCountdownId);  G.mmCountdownId  = null;
-    if (G.mmChildQuery && G.mmChildListener) {
-        G.mmChildQuery.off('child_added', G.mmChildListener);
+    if (G.mmChildQuery1 && G.mmChildListener) {
+        G.mmChildQuery1.off('child_added', G.mmChildListener);
+        G.mmChildQuery1.off('child_changed', G.mmChildListener);
+    }
+    if (G.mmChildQuery2 && G.mmChildListener) {
+        G.mmChildQuery2.off('child_added', G.mmChildListener);
+        G.mmChildQuery2.off('child_changed', G.mmChildListener);
+    }
+    if (G.mmChildListener) {
         console.log('🔌 Listener MM détaché');
     }
+
     G.mmChildListener    = null;
     G.mmChildListenerRef = null;
-    G.mmChildQuery       = null;
+    G.mmChildQuery1      = null;
+    G.mmChildQuery2      = null;
     G.myQueueKey         = null;
 }
 
