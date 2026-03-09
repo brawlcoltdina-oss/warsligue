@@ -31,6 +31,7 @@ const G = {
     myQueueKey: null,
     mmChildListener: null,
     mmChildListenerRef: null,
+    mmChildQuery: null,
     mmSearchTimer: null,
     mmCountdownId: null,
     mmSeconds: 0,
@@ -886,6 +887,7 @@ async function startMatchmaking() {
         console.log('🔍 Recherche adversaire... (Trophées:', G.playerData.trophies || 0, ')');
 
         G.mmChildListenerRef = RTDB.ref('active_matches');
+        G.mmChildQuery = G.mmChildListenerRef.limitToLast(1);
         G.mmChildListener = (snap) => {
             const m = snap.val();
             if (!m) return;
@@ -896,7 +898,7 @@ async function startMatchmaking() {
                 enterMatch(snap.key, m);
             }
         };
-        G.mmChildListenerRef.limitToLast(1).on('child_added', G.mmChildListener);
+        G.mmChildQuery.on('child_added', G.mmChildListener);
 
         scheduleSearch();
     } catch (e) {
@@ -928,6 +930,7 @@ async function tryPairMatch() {
         }
 
         const myTrophies = G.playerData.trophies || 0;
+        const maxDiff = 250 + Math.floor(G.mmSeconds / 5) * 250; // élargir le matchmaking au fil du temps
         
         let bestOpponent = null;
         let bestKey = null;
@@ -938,7 +941,7 @@ async function tryPairMatch() {
             if (!player || !player.uid) continue;
             
             const diff = Math.abs((player.trophies || 0) - myTrophies);
-            if (diff <= 250 && diff < bestDiff) {
+            if (diff <= maxDiff && diff < bestDiff) {
                 bestDiff = diff;
                 bestOpponent = player;
                 bestKey = key;
@@ -988,12 +991,13 @@ async function tryPairMatch() {
 function stopMatchmaking() {
     clearTimeout(G.mmSearchTimer);   G.mmSearchTimer  = null;
     clearInterval(G.mmCountdownId);  G.mmCountdownId  = null;
-    if (G.mmChildListenerRef && G.mmChildListener) {
-        G.mmChildListenerRef.off('child_added', G.mmChildListener);
+    if (G.mmChildQuery && G.mmChildListener) {
+        G.mmChildQuery.off('child_added', G.mmChildListener);
         console.log('🔌 Listener MM détaché');
     }
     G.mmChildListener    = null;
     G.mmChildListenerRef = null;
+    G.mmChildQuery       = null;
     G.myQueueKey         = null;
 }
 
