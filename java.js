@@ -954,7 +954,27 @@ async function tryPairMatch() {
         }
         
         console.log('🎯 Adversaire trouvé:', bestOpponent.username, '| Δ', bestDiff, 'trophées');
-        
+
+        // Pour éviter que deux clients créent simultanément deux matches différents
+        // pour les mêmes joueurs, on se base sur l'UID : seul le joueur avec l'UID
+        // le plus petit crée réellement le match (l'autre attend de le détecter).
+        if (G.user.uid > bestOpponent.uid) {
+            console.log('⏳ Lâcher la création (attente de match créé par l\'autre joueur)');
+            return;
+        }
+
+        // Réserver l'entrée de l'adversaire en marquant `matched: true` via une transaction.
+        const opponentRef = RTDB.ref(`matchmaking_queue/${bestKey}`);
+        const tx = await opponentRef.transaction((current) => {
+            if (!current || current.matched) return; // déjà pris
+            return { ...current, matched: true };
+        });
+
+        if (!tx.committed || !tx.snapshot.val()) {
+            console.log('⚠️ La partie a déjà été prise par un autre joueur, on re-tente.');
+            return;
+        }
+
         const matchKey = RTDB.ref('active_matches').push().key;
         const myCharKey = G.selectedChar;
         const oppCharKey = bestOpponent.character || 'warrior';
