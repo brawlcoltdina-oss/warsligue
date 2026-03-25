@@ -102,7 +102,7 @@
 
     <div class="menu-content">
         <img src="Group 15.svg" alt="WARSLIGUE" class="game-logo-menu">
-        <p class="menu-subtitle">Prêt pour le combat ?</p>
+        <p class="menu-subtitle">Prêt à survivre ?</p>
 
         <!-- SELECTED CHARACTER PREVIEW -->
         <div class="character-preview" id="character-preview">
@@ -133,7 +133,7 @@
                 <span class="btn-icon">👤</span><span>CHOISIR COMBATTANT</span>
             </button>
             <button id="play-btn" class="btn-large btn-primary">
-                <span class="btn-icon">⚔️</span><span>JOUER</span>
+                <span class="btn-icon">🧟</span><span>JOUER — MODE ZOMBIE</span>
             </button>
             <button id="chests-btn" class="btn-large btn-secondary">
                 <span class="btn-icon">📦</span><span>COFFRES</span>
@@ -153,7 +153,7 @@
             <h2 class="panel-title">⚙️ PARAMÈTRES</h2>
             <button id="close-settings-panel" class="btn-close">✕</button>
         </div>
-        
+
         <div class="settings-container">
             <div class="settings-section">
                 <h3 class="section-title">🎮 Contrôles</h3>
@@ -207,7 +207,7 @@
                 <h3 class="section-title">📊 Informations</h3>
                 <div class="info-item">
                     <span class="info-label">Version</span>
-                    <span class="info-value">0.45</span>
+                    <span class="info-value">0.5</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Joueur ID</span>
@@ -237,7 +237,7 @@
             <h2 class="panel-title">👤 COMBATTANTS</h2>
             <button id="close-character-panel" class="btn-close">✕</button>
         </div>
-        
+
         <div class="brawlers-container-panel">
             <div class="brawlers-grid" id="character-selector"></div>
         </div>
@@ -252,25 +252,23 @@
             <h2 class="panel-title">⚡ AMÉLIORATIONS</h2>
             <button id="close-upgrades-panel" class="btn-close">✕</button>
         </div>
-        
+
         <div class="upgrades-info">
             <div class="upgrade-current-char">
                 <span id="upgrade-char-name" style="font-weight: bold; font-size: 1.2em;">Warrior</span>
                 <span id="upgrade-powerpoints-display" style="color: #FFD700; margin-left: 10px;">⚡ 0 points</span>
             </div>
         </div>
-        
+
         <div class="upgrades-container">
             <div class="upgrade-section">
                 <h3 class="upgrade-stat-title">❤️ VIE (HP)</h3>
                 <div id="upgrade-hp-levels" class="upgrade-levels"></div>
             </div>
-            
             <div class="upgrade-section">
                 <h3 class="upgrade-stat-title">⚡ VITESSE</h3>
                 <div id="upgrade-speed-levels" class="upgrade-levels"></div>
             </div>
-            
             <div class="upgrade-section">
                 <h3 class="upgrade-stat-title">⚔️ DÉGÂTS</h3>
                 <div id="upgrade-damage-levels" class="upgrade-levels"></div>
@@ -295,9 +293,7 @@
                 </div>
             </div>
         </div>
-
         <div class="chests-grid" id="chests-grid"></div>
-
         <button id="close-chests" class="btn-secondary chests-close-btn">Retour</button>
     </div>
 </div>
@@ -309,73 +305,17 @@
         <div class="chest-opening-anim" id="chest-opening">
             <div class="chest-icon" id="opening-chest-icon">📦</div>
         </div>
-        
         <div class="reward-result" id="reward-result" style="display:none;">
             <h3 class="reward-title">🎉 Récompense !</h3>
-            
             <div class="reward-item" id="reward-item">
                 <div class="reward-rarity-badge" id="reward-rarity">COMMUN</div>
                 <div class="reward-icon" id="reward-icon">⚔️</div>
                 <div class="reward-name" id="reward-name">Warrior</div>
                 <div class="reward-status" id="reward-status">NOUVEAU !</div>
             </div>
-            
-            <div class="reward-gold" id="reward-gold-display">
-                +150 💰
-            </div>
-            
+            <div class="reward-gold" id="reward-gold-display">+150 💰</div>
             <button id="claim-reward-btn" class="btn-primary">Récupérer</button>
         </div>
-    </div>
-</div>
-
-<!-- ===================== MODE SELECTION SCREEN ===================== -->
-<div id="mode-selection-screen" class="screen">
-    <div class="mode-selection-container">
-        <div class="mode-selection-header">
-            <img src="Group 15.svg" alt="WARSLIGUE" class="mode-logo">
-            <h2>Choisir un mode de jeu</h2>
-        </div>
-        
-        <div class="mode-cards">
-            <div class="mode-card" id="mode-multiplayer">
-                <div class="mode-icon">⚔️</div>
-                <h3>Multijoueur</h3>
-                <p>Affrontez un joueur en ligne</p>
-                <div class="mode-rewards">
-                    <span class="reward-item">🏆 Trophées</span>
-                    <span class="reward-item">💰 Pièces</span>
-                </div>
-            </div>
-            
-            <div class="mode-card" id="mode-zombie">
-                <div class="mode-icon">🧟</div>
-                <h3>Mode Zombie</h3>
-                <p>Survivez aux vagues de zombies</p>
-                <div class="mode-rewards">
-                    <span class="reward-item">💰 Pièces bonus</span>
-                    <span class="reward-item">🏆 Bonus trophées</span>
-                </div>
-            </div>
-        </div>
-        
-        <button id="cancel-mode-selection" class="btn-secondary">Retour</button>
-    </div>
-</div>
-
-<!-- ===================== MATCHMAKING SCREEN ===================== -->
-<div id="matchmaking-screen" class="screen">
-    <div class="matchmaking-container">
-        <h2>Recherche d'adversaire...</h2>
-        <div class="matchmaking-animation">
-            <div class="pulse-ring"></div>
-            <div class="pulse-ring delay-1"></div>
-            <div class="pulse-ring delay-2"></div>
-            <div class="pulse-core">🔍</div>
-        </div>
-        <p class="matchmaking-text">Trophées : <span id="mm-trophies">0</span></p>
-        <p class="matchmaking-timer" id="mm-timer">0s</p>
-        <button id="cancel-matchmaking" class="btn-secondary">Annuler</button>
     </div>
 </div>
 
@@ -397,16 +337,17 @@
 
         <div class="hud-center">
             <div class="timer-wrap">
-                <span class="timer-label">TEMPS</span>
-                <span class="timer" id="game-timer">3:00</span>
+                <span class="timer-label">SURVIE</span>
+                <span class="timer" id="game-timer">0:00</span>
             </div>
         </div>
 
-        <div class="hud-opponent">
+        <!-- Barre adversaire conservée dans le DOM pour compatibilité future (duo) mais masquée -->
+        <div class="hud-opponent" style="visibility: hidden;">
             <span class="hud-name" id="opponent-game-name">Adversaire</span>
             <div class="hp-bar">
-                <div class="hp-fill" id="opponent-hp" style="width:100%"></div>
-                <span class="hp-text" id="opponent-hp-text">100</span>
+                <div class="hp-fill" id="opponent-hp" style="width:0%"></div>
+                <span class="hp-text" id="opponent-hp-text"></span>
             </div>
         </div>
     </div>
@@ -442,19 +383,19 @@
 <div id="result-screen" class="screen">
     <div class="result-particles"></div>
     <div class="result-container">
-        <h2 id="result-title" class="result-title">VICTOIRE!</h2>
+        <h2 id="result-title" class="result-title">SURVIVANT!</h2>
         <div class="result-stats">
             <div class="stat-row">
-                <span class="stat-label">Trophées</span>
-                <span id="result-trophies" class="stat-value trophy-change">+10 🏆</span>
+                <span class="stat-label">Temps de survie</span>
+                <span id="result-trophies" class="stat-value trophy-change">0s</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">Or gagné</span>
-                <span id="result-gold" class="stat-value gold-change">+50 💰</span>
+                <span id="result-gold" class="stat-value gold-change">+0 💰</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">Total trophées</span>
-                <span id="result-total" class="stat-value">110 🏆</span>
+                <span id="result-total" class="stat-value">0 🏆</span>
             </div>
         </div>
         <button id="return-menu-btn" class="btn-primary">Retour au menu</button>
@@ -482,7 +423,7 @@
 
 <script src="character.js"></script>
 <script src="rewards-gold.js"></script>
-<script src="online-tracking.js"></script> <!-- ✅ NOUVEAU -->
+<script src="online-tracking.js"></script>
 <script src="java.js"></script>
 
 </body>
