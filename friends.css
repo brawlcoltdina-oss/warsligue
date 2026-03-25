@@ -1,0 +1,411 @@
+/* ========================================
+   WARSLIGUE — friends.css
+   Système d'amis
+   ======================================== */
+
+/* ===== PANNEAU AMIS ===== */
+#friends-panel .panel-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* MON CODE */
+.my-code-section {
+    padding: 1.4rem 1.5rem 1rem;
+    background: rgba(108, 92, 231, 0.08);
+    border-bottom: 1px solid rgba(108, 92, 231, 0.2);
+}
+
+.my-code-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--gray-text);
+    margin-bottom: 0.6rem;
+}
+
+.my-code-display {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(108, 92, 231, 0.15);
+    border: 2px solid rgba(108, 92, 231, 0.4);
+    border-radius: 14px;
+    padding: 0.8rem 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.my-code-hash {
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: var(--secondary);
+    opacity: 0.7;
+}
+
+.my-code-value {
+    flex: 1;
+    font-family: 'Bungee', cursive;
+    font-size: 1.7rem;
+    letter-spacing: 0.12em;
+    color: var(--light-text);
+    text-shadow: 0 0 20px rgba(108, 92, 231, 0.6);
+}
+
+.btn-copy-code {
+    background: rgba(108, 92, 231, 0.3);
+    border: 1.5px solid rgba(108, 92, 231, 0.5);
+    border-radius: 10px;
+    padding: 0.5rem 0.8rem;
+    font-size: 1.1rem;
+    color: var(--light-text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.btn-copy-code:hover {
+    background: var(--secondary);
+    border-color: var(--secondary);
+    transform: scale(1.05);
+}
+
+.my-code-hint {
+    font-size: 0.78rem;
+    color: var(--gray-text);
+    text-align: center;
+}
+
+/* AJOUTER UN AMI */
+.add-friend-section {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.add-friend-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--gray-text);
+    margin-bottom: 0.6rem;
+}
+
+.add-friend-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.add-friend-hash {
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: var(--gray-text);
+}
+
+.friend-code-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 0.8rem 1rem;
+    color: var(--light-text);
+    font-family: 'Bungee', cursive;
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.friend-code-input::placeholder {
+    color: var(--gray-text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.friend-code-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(255, 51, 102, 0.15);
+}
+
+.btn-send-request {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 0.8rem 1.2rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.btn-send-request:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(255, 51, 102, 0.4);
+}
+
+/* MESSAGE FEEDBACK */
+.friends-msg {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: all 0.3s ease;
+    display: none;
+}
+
+.friends-msg.show {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.friends-msg-success { background: rgba(46, 204, 113, 0.15); color: #2ECC71; border: 1px solid rgba(46, 204, 113, 0.3); }
+.friends-msg-error   { background: rgba(255, 51, 102, 0.15); color: #ff6b6b; border: 1px solid rgba(255, 51, 102, 0.3); }
+.friends-msg-info    { background: rgba(255, 255, 255, 0.06); color: var(--gray-text); border: 1px solid rgba(255, 255, 255, 0.1); }
+
+/* TABS */
+.friends-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.friends-tab {
+    flex: 1;
+    padding: 0.9rem 0.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    color: var(--gray-text);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.friends-tab:hover { color: var(--light-text); }
+
+.friends-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.badge-tab {
+    background: var(--primary);
+    color: white;
+    border-radius: 999px;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.7rem;
+    font-weight: 900;
+    display: none;
+}
+
+.badge-tab.visible { display: inline-flex; }
+
+/* CONTENU TABS */
+.friends-tab-content {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.friends-tab-content.active { display: flex; flex-direction: column; }
+
+/* LISTE */
+.friends-list {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.friends-empty {
+    text-align: center;
+    color: var(--gray-text);
+    font-size: 0.9rem;
+    padding: 2.5rem 1rem;
+    line-height: 1.7;
+}
+
+/* CARTE AMI */
+.friend-card {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.9rem 1rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    transition: all 0.2s ease;
+}
+
+.friend-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(108, 92, 231, 0.3);
+    transform: translateX(3px);
+}
+
+.friend-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--secondary), #8e44ad);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 900;
+    flex-shrink: 0;
+    box-shadow: 0 0 12px rgba(108, 92, 231, 0.4);
+}
+
+.friend-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.friend-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--light-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.friend-meta {
+    font-size: 0.78rem;
+    color: var(--gray-text);
+    margin-top: 0.2rem;
+}
+
+.btn-remove-friend {
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    opacity: 0.4;
+    transition: opacity 0.2s, transform 0.2s;
+    padding: 0.3rem;
+    flex-shrink: 0;
+}
+
+.btn-remove-friend:hover {
+    opacity: 1;
+    transform: scale(1.2);
+}
+
+/* CARTE DEMANDE */
+.friend-request-card {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.9rem 1rem;
+    background: rgba(255, 51, 102, 0.06);
+    border: 1.5px solid rgba(255, 51, 102, 0.2);
+    border-radius: 14px;
+    animation: slideInRequest 0.3s ease;
+}
+
+@keyframes slideInRequest {
+    from { opacity: 0; transform: translateX(10px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+.friend-request-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 900;
+    flex-shrink: 0;
+    box-shadow: 0 0 12px rgba(255, 51, 102, 0.4);
+}
+
+.friend-request-info { flex: 1; min-width: 0; }
+
+.friend-request-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--light-text);
+}
+
+.friend-request-meta {
+    font-size: 0.78rem;
+    color: var(--gray-text);
+    margin-top: 0.2rem;
+}
+
+.friend-request-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.btn-accept, .btn-decline {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    font-size: 1rem;
+    font-weight: 900;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-accept {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ECC71;
+    border: 2px solid rgba(46, 204, 113, 0.4);
+}
+
+.btn-accept:hover {
+    background: #2ECC71;
+    color: white;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.5);
+}
+
+.btn-decline {
+    background: rgba(255, 51, 102, 0.15);
+    color: #ff6b6b;
+    border: 2px solid rgba(255, 51, 102, 0.3);
+}
+
+.btn-decline:hover {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(255, 51, 102, 0.4);
+}
+
+/* RESPONSIVE */
+@media (max-width: 600px) {
+    .my-code-value { font-size: 1.4rem; }
+    .my-code-section, .add-friend-section { padding: 1rem; }
+    .friends-list { padding: 0.8rem; }
+}

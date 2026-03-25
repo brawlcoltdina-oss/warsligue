@@ -164,12 +164,14 @@ AUTH.onAuthStateChanged(async (user) => {
         await ensurePlayerDoc(user);
         listenPlayerData(user.uid);
         if (typeof initOnlineTracking === 'function') initOnlineTracking();
+        if (typeof initFriendsSystem  === 'function') initFriendsSystem();
         showScreen('main-menu');
     } else {
         G.user = null;
         G.playerData = null;
         if (G.playerDataUnsub) { G.playerDataUnsub(); G.playerDataUnsub = null; }
-        if (typeof stopOnlineTracking === 'function') stopOnlineTracking();
+        if (typeof stopOnlineTracking  === 'function') stopOnlineTracking();
+        if (typeof cleanupFriendsSystem === 'function') cleanupFriendsSystem();
         showScreen('auth-screen');
     }
 });
@@ -1430,7 +1432,8 @@ function fullCleanup() {
     cleanupGame();
     removeKeyboard();
     stopConfetti();
-    if (typeof stopOnlineTracking === 'function') stopOnlineTracking();
+    if (typeof stopOnlineTracking   === 'function') stopOnlineTracking();
+    if (typeof cleanupFriendsSystem  === 'function') cleanupFriendsSystem();
 }
 
 window.addEventListener('beforeunload', fullCleanup);

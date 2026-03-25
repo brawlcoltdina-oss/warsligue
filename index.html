@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Bungee&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="friends.css">
 </head>
 <body>
 
@@ -95,6 +96,10 @@
                 <span id="online-count">0</span>
                 <span class="online-label">en ligne</span>
             </div>
+            <button id="friends-btn" class="btn-icon-header" title="Amis" style="position:relative;">
+                👥
+                <span id="friends-badge" style="display:none; position:absolute; top:-4px; right:-4px; background:#FF3366; color:#fff; border-radius:50%; width:18px; height:18px; font-size:0.65rem; font-weight:900; align-items:center; justify-content:center;">0</span>
+            </button>
             <button id="leaderboard-btn" class="btn-icon-header" title="Classement">🏅</button>
             <button id="settings-btn" class="btn-icon-header">⚙️</button>
         </div>
@@ -141,6 +146,71 @@
             <button id="upgrades-btn" class="btn-large btn-secondary">
                 <span class="btn-icon">⚡</span><span>AMÉLIORATIONS</span>
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== FRIENDS PANEL ===================== -->
+<div id="friends-panel" class="side-panel">
+    <div class="panel-overlay" id="friends-panel-overlay"></div>
+    <div class="panel-content">
+        <div class="panel-header">
+            <h2 class="panel-title">👥 AMIS</h2>
+            <button id="close-friends-panel" class="btn-close">✕</button>
+        </div>
+
+        <!-- MON CODE AMI -->
+        <div class="my-code-section">
+            <div class="my-code-label">Mon identifiant</div>
+            <div class="my-code-display">
+                <span class="my-code-hash">#</span>
+                <span id="my-friend-code" class="my-code-value">——————</span>
+                <button id="copy-code-btn" class="btn-copy-code" title="Copier">📋</button>
+            </div>
+            <div class="my-code-hint">Partagez ce code pour que vos amis vous ajoutent</div>
+        </div>
+
+        <!-- AJOUTER UN AMI -->
+        <div class="add-friend-section">
+            <div class="add-friend-label">Ajouter un ami</div>
+            <div class="add-friend-row">
+                <span class="add-friend-hash">#</span>
+                <input
+                    id="friend-code-input"
+                    class="friend-code-input"
+                    type="text"
+                    placeholder="Code de l'ami..."
+                    maxlength="8"
+                    autocomplete="off"
+                    autocorrect="off"
+                    spellcheck="false"
+                >
+                <button id="send-friend-request-btn" class="btn-send-request">Ajouter</button>
+            </div>
+            <div id="friends-msg" class="friends-msg"></div>
+        </div>
+
+        <!-- TABS -->
+        <div class="friends-tabs">
+            <button class="friends-tab active" data-tab="list">Amis</button>
+            <button class="friends-tab" data-tab="requests">
+                Demandes
+                <span id="friends-badge-tab" class="badge-tab">0</span>
+            </button>
+        </div>
+
+        <!-- LISTE AMIS -->
+        <div id="friends-tab-list" class="friends-tab-content active">
+            <div id="friends-list" class="friends-list">
+                <div class="friends-empty">Chargement...</div>
+            </div>
+        </div>
+
+        <!-- DEMANDES REÇUES -->
+        <div id="friends-tab-requests" class="friends-tab-content">
+            <div id="friend-requests-list" class="friends-list">
+                <div class="friends-empty">Aucune demande en attente</div>
+            </div>
         </div>
     </div>
 </div>
@@ -424,6 +494,7 @@
 <script src="character.js"></script>
 <script src="rewards-gold.js"></script>
 <script src="online-tracking.js"></script>
+<script src="friends.js"></script>
 <script src="java.js"></script>
 
 </body>
