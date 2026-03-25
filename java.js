@@ -828,6 +828,7 @@ function showZombieResults(survivalTime, gold, trophy) {
    SYSTÈME DE VISÉE
    ============================================= */
 function installAimControls() {
+    // --- Visée souris ---
     G.canvas.addEventListener('mousemove', (e) => {
         if (!G.player) return;
         const rect = G.canvas.getBoundingClientRect();
@@ -840,6 +841,16 @@ function installAimControls() {
         G.aimDistance = Math.min(Math.sqrt(dx*dx + dy*dy), maxRange);
     });
 
+    // --- Clic gauche = attaque normale ---
+    G.canvas.addEventListener('mousedown', (e) => {
+        if (e.button === 0) { e.preventDefault(); doAttack('normal');  }
+        if (e.button === 2) { e.preventDefault(); doAttack('special'); }
+    });
+
+    // Empêcher le menu contextuel sur le canvas
+    G.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // --- Touch ---
     G.canvas.addEventListener('touchmove', (e) => {
         if (!G.player) return;
         e.preventDefault();
@@ -891,8 +902,8 @@ function installKeyboard() {
     G.keydownFn = (e) => {
         const k = e.key.toLowerCase();
         G.keys[k] = true;
-        if (k === 'a') doAttack('normal');
-        if (k === 'e') doAttack('special');
+
+
     };
     G.keyupFn = (e) => { G.keys[e.key.toLowerCase()] = false; };
     document.addEventListener('keydown', G.keydownFn);
