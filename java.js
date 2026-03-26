@@ -165,6 +165,7 @@ AUTH.onAuthStateChanged(async (user) => {
         listenPlayerData(user.uid);
         if (typeof initOnlineTracking === 'function') initOnlineTracking();
         if (typeof initFriendsSystem  === 'function') initFriendsSystem();
+        if (typeof initCombatCodesSystem === 'function') initCombatCodesSystem();
         showScreen('main-menu');
     } else {
         G.user = null;
