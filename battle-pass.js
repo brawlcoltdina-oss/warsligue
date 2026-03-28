@@ -13,73 +13,209 @@ const BATTLE_PASS_CONFIG = {
     PREMIUM_MULTIPLIER: 1.5, // bonus XP pour premium (50% de plus)
 };
 
-// Structure des récompenses par niveau
+// Structure des récompenses par niveau (Gratuit et Premium séparés)
 const BATTLE_PASS_REWARDS = {
-    // ── NIVEAUX GRATUITS (impairs) ──
-    1:  { type: 'gold',        amount: 50,      tier: 'free',    label: '💰 50 pièces' },
-    2:  { type: 'powerpoints', amount: 5,       tier: 'free',    label: '⚡ +5 PP' },
-    3:  { type: 'gold',        amount: 75,      tier: 'free',    label: '💰 75 pièces' },
-    4:  { type: 'powerpoints', amount: 8,       tier: 'free',    label: '⚡ +8 PP' },
-    5:  { type: 'gold',        amount: 100,     tier: 'free',    label: '💰 100 pièces' },
-    6:  { type: 'chest',       chest: 'basic',  tier: 'free',    label: '📦 Coffre Basique' },
-    7:  { type: 'gold',        amount: 150,     tier: 'free',    label: '💰 150 pièces' },
-    8:  { type: 'powerpoints', amount: 12,      tier: 'free',    label: '⚡ +12 PP' },
-    9:  { type: 'gold',        amount: 200,     tier: 'free',    label: '💰 200 pièces' },
-    
-    // ── NIVEAU 10 — RÉCOMPENSE PREMIUM ──
-    10: { type: 'chest',       chest: 'rare',   tier: 'premium', label: '🎁 Coffre Rare (Premium)' },
-    
-    11: { type: 'gold',        amount: 100,     tier: 'free',    label: '💰 100 pièces' },
-    12: { type: 'powerpoints', amount: 10,      tier: 'free',    label: '⚡ +10 PP' },
-    13: { type: 'gold',        amount: 125,     tier: 'free',    label: '💰 125 pièces' },
-    14: { type: 'chest',       chest: 'basic',  tier: 'free',    label: '📦 Coffre Basique' },
-    15: { type: 'gold',        amount: 150,     tier: 'free',    label: '💰 150 pièces' },
-    16: { type: 'powerpoints', amount: 15,      tier: 'free',    label: '⚡ +15 PP' },
-    17: { type: 'gold',        amount: 175,     tier: 'free',    label: '💰 175 pièces' },
-    18: { type: 'powerpoints', amount: 12,      tier: 'free',    label: '⚡ +12 PP' },
-    19: { type: 'gold',        amount: 200,     tier: 'free',    label: '💰 200 pièces' },
-    
-    // ── NIVEAU 20 — RÉCOMPENSE PREMIUM ──
-    20: { type: 'chest',       chest: 'epic',   tier: 'premium', label: '💎 Coffre Épique (Premium)' },
-    
-    21: { type: 'gold',        amount: 150,     tier: 'free',    label: '💰 150 pièces' },
-    22: { type: 'powerpoints', amount: 18,      tier: 'free',    label: '⚡ +18 PP' },
-    23: { type: 'gold',        amount: 200,     tier: 'free',    label: '💰 200 pièces' },
-    24: { type: 'chest',       chest: 'basic',  tier: 'free',    label: '📦 Coffre Basique' },
-    25: { type: 'gold',        amount: 250,     tier: 'free',    label: '💰 250 pièces' },
-    26: { type: 'powerpoints', amount: 20,      tier: 'free',    label: '⚡ +20 PP' },
-    27: { type: 'gold',        amount: 275,     tier: 'free',    label: '💰 275 pièces' },
-    28: { type: 'powerpoints', amount: 15,      tier: 'free',    label: '⚡ +15 PP' },
-    29: { type: 'gold',        amount: 300,     tier: 'free',    label: '💰 300 pièces' },
-    
-    // ── NIVEAU 30 — RÉCOMPENSE PREMIUM ──
-    30: { type: 'chest',       chest: 'epic',   tier: 'premium', label: '💎 Coffre Épique (Premium)' },
-    
-    31: { type: 'gold',        amount: 200,     tier: 'free',    label: '💰 200 pièces' },
-    32: { type: 'powerpoints', amount: 25,      tier: 'free',    label: '⚡ +25 PP' },
-    33: { type: 'gold',        amount: 250,     tier: 'free',    label: '💰 250 pièces' },
-    34: { type: 'chest',       chest: 'rare',   tier: 'free',    label: '🎁 Coffre Rare' },
-    35: { type: 'gold',        amount: 300,     tier: 'free',    label: '💰 300 pièces' },
-    36: { type: 'powerpoints', amount: 30,      tier: 'free',    label: '⚡ +30 PP' },
-    37: { type: 'gold',        amount: 350,     tier: 'free',    label: '💰 350 pièces' },
-    38: { type: 'powerpoints', amount: 20,      tier: 'free',    label: '⚡ +20 PP' },
-    39: { type: 'gold',        amount: 400,     tier: 'free',    label: '💰 400 pièces' },
-    
-    // ── NIVEAU 40 — RÉCOMPENSE PREMIUM ──
-    40: { type: 'chest',       chest: 'legendary', tier: 'premium', label: '👑 Coffre Légendaire (Premium)' },
-    
-    41: { type: 'gold',        amount: 300,     tier: 'free',    label: '💰 300 pièces' },
-    42: { type: 'powerpoints', amount: 35,      tier: 'free',    label: '⚡ +35 PP' },
-    43: { type: 'gold',        amount: 350,     tier: 'free',    label: '💰 350 pièces' },
-    44: { type: 'chest',       chest: 'epic',   tier: 'free',    label: '💎 Coffre Épique' },
-    45: { type: 'gold',        amount: 400,     tier: 'free',    label: '💰 400 pièces' },
-    46: { type: 'powerpoints', amount: 40,      tier: 'free',    label: '⚡ +40 PP' },
-    47: { type: 'gold',        amount: 450,     tier: 'free',    label: '💰 450 pièces' },
-    48: { type: 'powerpoints', amount: 30,      tier: 'free',    label: '⚡ +30 PP' },
-    49: { type: 'gold',        amount: 500,     tier: 'free',    label: '💰 500 pièces' },
-    
-    // ── NIVEAU 50 — RÉCOMPENSE PREMIUM FINALE ──
-    50: { type: 'chest',       chest: 'legendary', tier: 'premium', label: '👑 Coffre Légendaire (Premium)' },
+    // NIVEAU 1
+    1:  { 
+        free:    { type: 'gold',        amount: 50,      label: '💰 50 pièces' },
+        premium: { type: 'gold',        amount: 150,     label: '💰 150 pièces' }
+    },
+    2:  { 
+        free:    { type: 'powerpoints', amount: 5,       label: '⚡ +5 PP' },
+        premium: { type: 'gold',        amount: 100,     label: '💰 100 pièces' }
+    },
+    3:  { 
+        free:    { type: 'gold',        amount: 75,      label: '💰 75 pièces' },
+        premium: { type: 'chest',       chest: 'rare',   label: '🎁 Coffre Rare' }
+    },
+    4:  { 
+        free:    { type: 'powerpoints', amount: 8,       label: '⚡ +8 PP' },
+        premium: { type: 'gold',        amount: 200,     label: '💰 200 pièces' }
+    },
+    5:  { 
+        free:    { type: 'gold',        amount: 100,     label: '💰 100 pièces' },
+        premium: { type: 'prestige',    amount: 5,       label: '👑 Prestige x5' }
+    },
+    6:  { 
+        free:    { type: 'chest',       chest: 'basic',  label: '📦 Coffre Basique' },
+        premium: { type: 'gold',        amount: 250,     label: '💰 250 pièces' }
+    },
+    7:  { 
+        free:    { type: 'gold',        amount: 150,     label: '💰 150 pièces' },
+        premium: { type: 'chest',       chest: 'epic',   label: '💎 Coffre Épique' }
+    },
+    8:  { 
+        free:    { type: 'powerpoints', amount: 12,      label: '⚡ +12 PP' },
+        premium: { type: 'prestige',    amount: 10,      label: '👑 Prestige x10' }
+    },
+    9:  { 
+        free:    { type: 'gold',        amount: 200,     label: '💰 200 pièces' },
+        premium: { type: 'gold',        amount: 300,     label: '💰 300 pièces' }
+    },
+    10: { 
+        free:    { type: 'powerpoints', amount: 15,      label: '⚡ +15 PP' },
+        premium: { type: 'chest',       chest: 'legendary', label: '👑 Coffre Légendaire' }
+    },
+    11: { 
+        free:    { type: 'gold',        amount: 100,     label: '💰 100 pièces' },
+        premium: { type: 'gold',        amount: 350,     label: '💰 350 pièces' }
+    },
+    12: { 
+        free:    { type: 'powerpoints', amount: 10,      label: '⚡ +10 PP' },
+        premium: { type: 'prestige',    amount: 15,      label: '👑 Prestige x15' }
+    },
+    13: { 
+        free:    { type: 'gold',        amount: 125,     label: '💰 125 pièces' },
+        premium: { type: 'chest',       chest: 'epic',   label: '💎 Coffre Épique' }
+    },
+    14: { 
+        free:    { type: 'chest',       chest: 'basic',  label: '📦 Coffre Basique' },
+        premium: { type: 'gold',        amount: 400,     label: '💰 400 pièces' }
+    },
+    15: { 
+        free:    { type: 'gold',        amount: 150,     label: '💰 150 pièces' },
+        premium: { type: 'prestige',    amount: 20,      label: '👑 Prestige x20' }
+    },
+    16: { 
+        free:    { type: 'powerpoints', amount: 15,      label: '⚡ +15 PP' },
+        premium: { type: 'gold',        amount: 450,     label: '💰 450 pièces' }
+    },
+    17: { 
+        free:    { type: 'gold',        amount: 175,     label: '💰 175 pièces' },
+        premium: { type: 'chest',       chest: 'legendary', label: '👑 Coffre Légendaire' }
+    },
+    18: { 
+        free:    { type: 'powerpoints', amount: 12,      label: '⚡ +12 PP' },
+        premium: { type: 'prestige',    amount: 25,      label: '👑 Prestige x25' }
+    },
+    19: { 
+        free:    { type: 'gold',        amount: 200,     label: '💰 200 pièces' },
+        premium: { type: 'gold',        amount: 500,     label: '💰 500 pièces' }
+    },
+    20: { 
+        free:    { type: 'chest',       chest: 'rare',   label: '🎁 Coffre Rare' },
+        premium: { type: 'chest',       chest: 'legendary', label: '👑 Coffre Légendaire' }
+    },
+    21: { 
+        free:    { type: 'gold',        amount: 150,     label: '💰 150 pièces' },
+        premium: { type: 'prestige',    amount: 30,      label: '👑 Prestige x30' }
+    },
+    22: { 
+        free:    { type: 'powerpoints', amount: 18,      label: '⚡ +18 PP' },
+        premium: { type: 'gold',        amount: 550,     label: '💰 550 pièces' }
+    },
+    23: { 
+        free:    { type: 'gold',        amount: 200,     label: '💰 200 pièces' },
+        premium: { type: 'chest',       chest: 'epic',   label: '💎 Coffre Épique' }
+    },
+    24: { 
+        free:    { type: 'chest',       chest: 'basic',  label: '📦 Coffre Basique' },
+        premium: { type: 'prestige',    amount: 35,      label: '👑 Prestige x35' }
+    },
+    25: { 
+        free:    { type: 'gold',        amount: 250,     label: '💰 250 pièces' },
+        premium: { type: 'chest',       chest: 'legendary', label: '👑 Coffre Légendaire' }
+    },
+    26: { 
+        free:    { type: 'powerpoints', amount: 20,      label: '⚡ +20 PP' },
+        premium: { type: 'gold',        amount: 600,     label: '💰 600 pièces' }
+    },
+    27: { 
+        free:    { type: 'gold',        amount: 275,     label: '💰 275 pièces' },
+        premium: { type: 'prestige',    amount: 40,      label: '👑 Prestige x40' }
+    },
+    28: { 
+        free:    { type: 'powerpoints', amount: 15,      label: '⚡ +15 PP' },
+        premium: { type: 'gold',        amount: 650,     label: '💰 650 pièces' }
+    },
+    29: { 
+        free:    { type: 'gold',        amount: 300,     label: '💰 300 pièces' },
+        premium: { type: 'chest',       chest: 'epic',   label: '💎 Coffre Épique' }
+    },
+    30: { 
+        free:    { type: 'chest',       chest: 'rare',   label: '🎁 Coffre Rare' },
+        premium: { type: 'chest',       chest: 'legendary', label: '👑 Coffre Légendaire' }
+    },
+    31: { 
+        free:    { type: 'gold',        amount: 200,     label: '💰 200 pièces' },
+        premium: { type: 'prestige',    amount: 50,      label: '👑 Prestige x50' }
+    },
+    32: { 
+        free:    { type: 'powerpoints', amount: 25,      label: '⚡ +25 PP' },
+        premium: { type: 'gold',        amount: 700,     label: '💰 700 pièces' }
+    },
+    33: { 
+        free:    { type: 'gold',        amount: 250,     label: '💰 250 pièces' },
+        premium: { type: 'chest',       chest: 'legendary', label: '👑 Coffre Légendaire' }
+    },
+    34: { 
+        free:    { type: 'chest',       chest: 'rare',   label: '🎁 Coffre Rare' },
+        premium: { type: 'prestige',    amount: 55,      label: '👑 Prestige x55' }
+    },
+    35: { 
+        free:    { type: 'gold',        amount: 300,     label: '💰 300 pièces' },
+        premium: { type: 'gold',        amount: 750,     label: '💰 750 pièces' }
+    },
+    36: { 
+        free:    { type: 'powerpoints', amount: 30,      label: '⚡ +30 PP' },
+        premium: { type: 'chest',       chest: 'epic',   label: '💎 Coffre Épique' }
+    },
+    37: { 
+        free:    { type: 'gold',        amount: 350,     label: '💰 350 pièces' },
+        premium: { type: 'prestige',    amount: 60,      label: '👑 Prestige x60' }
+    },
+    38: { 
+        free:    { type: 'powerpoints', amount: 20,      label: '⚡ +20 PP' },
+        premium: { type: 'gold',        amount: 800,     label: '💰 800 pièces' }
+    },
+    39: { 
+        free:    { type: 'gold',        amount: 400,     label: '💰 400 pièces' },
+        premium: { type: 'chest',       chest: 'legendary', label: '👑 Coffre Légendaire' }
+    },
+    40: { 
+        free:    { type: 'chest',       chest: 'epic',   label: '💎 Coffre Épique' },
+        premium: { type: 'prestige',    amount: 75,      label: '👑 Prestige x75' }
+    },
+    41: { 
+        free:    { type: 'gold',        amount: 300,     label: '💰 300 pièces' },
+        premium: { type: 'gold',        amount: 850,     label: '💰 850 pièces' }
+    },
+    42: { 
+        free:    { type: 'powerpoints', amount: 35,      label: '⚡ +35 PP' },
+        premium: { type: 'chest',       chest: 'epic',   label: '💎 Coffre Épique' }
+    },
+    43: { 
+        free:    { type: 'gold',        amount: 350,     label: '💰 350 pièces' },
+        premium: { type: 'prestige',    amount: 80,      label: '👑 Prestige x80' }
+    },
+    44: { 
+        free:    { type: 'chest',       chest: 'epic',   label: '💎 Coffre Épique' },
+        premium: { type: 'gold',        amount: 900,     label: '💰 900 pièces' }
+    },
+    45: { 
+        free:    { type: 'gold',        amount: 400,     label: '💰 400 pièces' },
+        premium: { type: 'chest',       chest: 'legendary', label: '👑 Coffre Légendaire' }
+    },
+    46: { 
+        free:    { type: 'powerpoints', amount: 40,      label: '⚡ +40 PP' },
+        premium: { type: 'prestige',    amount: 100,     label: '👑 Prestige x100' }
+    },
+    47: { 
+        free:    { type: 'gold',        amount: 450,     label: '💰 450 pièces' },
+        premium: { type: 'gold',        amount: 1000,    label: '💰 1000 pièces' }
+    },
+    48: { 
+        free:    { type: 'powerpoints', amount: 30,      label: '⚡ +30 PP' },
+        premium: { type: 'chest',       chest: 'epic',   label: '💎 Coffre Épique' }
+    },
+    49: { 
+        free:    { type: 'gold',        amount: 500,     label: '💰 500 pièces' },
+        premium: { type: 'prestige',    amount: 150,     label: '👑 Prestige x150' }
+    },
+    50: { 
+        free:    { type: 'chest',       chest: 'legendary', label: '👑 Coffre Légendaire' },
+        premium: { type: 'chest',       chest: 'legendary', label: '👑 Coffre Légendaire' }
+    },
 };
 
 /* =============================================
@@ -92,7 +228,7 @@ const BATTLE_PASS_QUESTS = [
     { id: 'quest_4',  name: 'Collecteur',             desc: 'Collecte 1000 pièces',        xp: 100, target: 1000, type: 'gold', reward: '100 XP' },
     { id: 'quest_5',  name: 'Puissant',               desc: 'Gagne 100 points de pouvoir', xp: 150, target: 100, type: 'power', reward: '150 XP' },
     { id: 'quest_6',  name: 'Ouvreur de coffres',     desc: 'Ouvre 3 coffres',             xp: 200, target: 3,  type: 'chest', reward: '200 XP' },
-    { id: 'quest_7',  name: 'Légende',                desc: 'Atteins le niveau 50',        xp: 500, target: 50, type: 'level', reward: '500 XP' },
+    { id: 'quest_7',  name: 'Légende',                desc: 'Atteins le niveau 50',        xp: 500, target: 25, type: 'level', reward: '500 XP' },
 ];
 
 /* =============================================
@@ -150,30 +286,34 @@ async function addBattlePassXP(amount, source = 'combat') {
 async function awardLevelReward(level) {
     if (!G.user || !G.playerData) return;
 
-    const reward = BATTLE_PASS_REWARDS[level];
-    if (!reward) return;
-
-    // Vérifie si c'est une récompense premium et si le joueur ne l'a pas payée
-    if (reward.tier === 'premium' && !G.playerData.battlePassPremium) {
-        // Marquer : accessible après paiement premium
-        return;
-    }
+    const rewardData = BATTLE_PASS_REWARDS[level];
+    if (!rewardData) return;
 
     try {
         const updates = {};
+        const isPremiumOwned = G.playerData.battlePassPremium;
+        
+        // Sélectionner free ou premium
+        let reward = isPremiumOwned ? rewardData.premium : rewardData.free;
 
         if (reward.type === 'gold') {
             updates['gold'] = firebase.firestore.FieldValue.increment(reward.amount);
         } else if (reward.type === 'powerpoints') {
             const selectedChar = G.selectedChar || 'warrior';
-            const currentPP = (G.playerData.powerPoints && G.playerData.powerPoints[selectedChar]) || 0;
-            updates[`powerPoints.${selectedChar}`] = currentPP + reward.amount;
+            // Utiliser increment pour les powerPoints
+            updates[`powerPoints.${selectedChar}`] = firebase.firestore.FieldValue.increment(reward.amount);
         } else if (reward.type === 'chest') {
-            // Ajouter à une queue de coffres à ouvrir
-            const chests = G.playerData.battlePassChests || [];
-            chests.push(reward.chest);
-            updates['battlePassChests'] = chests;
+            // Utiliser arrayUnion pour ajouter à l'array de coffres
+            updates['battlePassChests'] = firebase.firestore.FieldValue.arrayUnion(reward.chest);
+        } else if (reward.type === 'prestige') {
+            // Prestige pour premium seulement
+            if (isPremiumOwned) {
+                updates['prestigePoints'] = firebase.firestore.FieldValue.increment(reward.amount);
+            }
         }
+
+        // Toujours marquer le niveau comme auto-récompensé
+        updates['battlePassClaimedRewards'] = firebase.firestore.FieldValue.arrayUnion(level);
 
         await FSDB.collection('players').doc(G.user.uid).update(updates);
         
@@ -269,8 +409,35 @@ function injectBattlePassUI() {
 
                     <!-- TAB 1 : Récompenses -->
                     <div id="bp-tab-rewards" class="battle-pass-tab-content active">
-                        <div class="rewards-grid" id="bp-rewards-grid">
-                            <!-- Rempli dynamiquement -->
+                        <div class="rewards-track-container">
+                            <!-- Chaîne gauche (gratuit) -->
+                            <div class="rewards-chain left-chain">
+                                <div class="chain-link" id="bp-chain-left"></div>
+                            </div>
+
+                            <!-- Colonne GRATUIT -->
+                            <div class="rewards-column free-column">
+                                <div class="column-header">
+                                    <span class="column-title">🎁 GRATUIT</span>
+                                </div>
+                                <div class="rewards-list" id="bp-rewards-free"></div>
+                            </div>
+
+                            <!-- Chaîne du milieu (connecteur) -->
+                            <div class="rewards-chain-middle"></div>
+
+                            <!-- Colonne PREMIUM -->
+                            <div class="rewards-column premium-column">
+                                <div class="column-header premium-header">
+                                    <span class="column-title">⭐ PREMIUM</span>
+                                </div>
+                                <div class="rewards-list" id="bp-rewards-premium"></div>
+                            </div>
+
+                            <!-- Chaîne droite (premium) -->
+                            <div class="rewards-chain right-chain">
+                                <div class="chain-link" id="bp-chain-right"></div>
+                            </div>
                         </div>
                     </div>
 
@@ -352,47 +519,69 @@ function updateBattlePassUI() {
 }
 
 function renderBattlePassRewards() {
-    const grid = document.getElementById('bp-rewards-grid');
-    if (!grid) return;
+    const freeList = document.getElementById('bp-rewards-free');
+    const premiumList = document.getElementById('bp-rewards-premium');
+    if (!freeList || !premiumList) return;
 
     const level = G.playerData.battlePassLevel || 1;
-    let html = '';
+    const isPremiumOwned = G.playerData.battlePassPremium;
+    let freeHtml = '';
+    let premiumHtml = '';
 
     for (let i = 1; i <= BATTLE_PASS_CONFIG.MAX_LEVELS; i++) {
-        const reward = BATTLE_PASS_REWARDS[i];
-        if (!reward) continue;
+        const rewardData = BATTLE_PASS_REWARDS[i];
+        if (!rewardData) continue;
 
         const isUnlocked = i <= level;
-        const isPremium = reward.tier === 'premium';
         const isClaimed = G.playerData.battlePassClaimedRewards && G.playerData.battlePassClaimedRewards.includes(i);
-        const canClaim = isUnlocked && (!isPremium || G.playerData.battlePassPremium) && !isClaimed;
 
-        const cardClass = [
-            'reward-card',
+        // CÔTÉ GRATUIT
+        const freeReward = rewardData.free;
+        const freeCardClass = [
+            'reward-item',
             isUnlocked ? 'unlocked' : 'locked',
-            isPremium ? 'premium' : '',
             isClaimed ? 'claimed' : ''
         ].filter(Boolean).join(' ');
 
-        html += `
-            <div class="${cardClass}" ${canClaim ? `onclick="claimLevelReward(${i})"` : ''}>
-                ${!isUnlocked ? '<div class="reward-lock">🔒</div>' : ''}
-                <div class="reward-card-content">
-                    <div class="reward-level">LVL ${i}</div>
-                    <div class="reward-icon">${getRewardIcon(reward)}</div>
-                    <div class="reward-label">${reward.label.split(' (')[0]}</div>
+        freeHtml += `
+            <div class="${freeCardClass}" ${isUnlocked && !isClaimed ? `onclick="claimLevelReward(${i})"` : ''}>
+                <div class="reward-item-inner">
+                    ${!isUnlocked ? '<div class="item-lock">🔒</div>' : ''}
+                    <div class="item-icon">${getRewardIcon(freeReward)}</div>
+                    <div class="item-label">${freeReward.label}</div>
+                    ${isClaimed ? '<div class="item-claimed">✓</div>' : ''}
                 </div>
-                <div class="claimed-badge">✓</div>
+                <div class="level-badge">${i}</div>
+            </div>
+        `;
+
+        // CÔTÉ PREMIUM
+        const premiumReward = rewardData.premium;
+        const canClaimPremium = isUnlocked && isPremiumOwned && !isClaimed;
+        const premiumCardClass = [
+            'reward-item',
+            'premium-item',
+            isUnlocked ? 'unlocked' : 'locked',
+            isClaimed ? 'claimed' : '',
+            !isPremiumOwned && isUnlocked ? 'locked-premium' : ''
+        ].filter(Boolean).join(' ');
+
+        premiumHtml += `
+            <div class="${premiumCardClass}" ${canClaimPremium ? `onclick="claimLevelReward(${i})"` : ''}>
+                <div class="reward-item-inner">
+                    ${!isUnlocked ? '<div class="item-lock">🔒</div>' : ''}
+                    ${isUnlocked && !isPremiumOwned ? '<div class="item-premium-lock">⭐</div>' : ''}
+                    <div class="item-icon">${getRewardIcon(premiumReward)}</div>
+                    <div class="item-label">${premiumReward.label}</div>
+                    ${isClaimed ? '<div class="item-claimed">✓</div>' : ''}
+                </div>
+                <div class="level-badge premium-badge">${i}</div>
             </div>
         `;
     }
 
-    grid.innerHTML = html;
-
-    // Ajouter event listeners aux cartes cliquables
-    grid.querySelectorAll('.reward-card.unlocked:not(.claimed)').forEach((card) => {
-        card.style.cursor = 'pointer';
-    });
+    freeList.innerHTML = freeHtml;
+    premiumList.innerHTML = premiumHtml;
 }
 
 function renderBattlePassQuests() {
@@ -453,6 +642,7 @@ function renderBattlePassQuests() {
 function getRewardIcon(reward) {
     if (reward.type === 'gold') return '💰';
     if (reward.type === 'powerpoints') return '⚡';
+    if (reward.type === 'prestige') return '👑';
     if (reward.type === 'chest') {
         if (reward.chest === 'basic') return '📦';
         if (reward.chest === 'rare') return '🎁';
@@ -465,8 +655,8 @@ function getRewardIcon(reward) {
 async function claimLevelReward(level) {
     if (!G.user || !G.playerData) return;
 
-    const reward = BATTLE_PASS_REWARDS[level];
-    if (!reward) return;
+    const rewardData = BATTLE_PASS_REWARDS[level];
+    if (!rewardData) return;
 
     // Vérif : déjà réclamé ?
     const claimed = G.playerData.battlePassClaimedRewards || [];
@@ -482,27 +672,41 @@ async function claimLevelReward(level) {
         return;
     }
 
-    // Vérif : récompense premium
-    if (reward.tier === 'premium' && !G.playerData.battlePassPremium) {
-        alert('Achetez le Passe Brawl Premium pour accéder à cette récompense !');
-        return;
-    }
-
     try {
+        const isPremiumOwned = G.playerData.battlePassPremium;
+        let reward = null;
+
+        // Décide quelle récompense octroyer (free ou premium)
+        if (isPremiumOwned) {
+            // Si premium, donner la récompense premium
+            reward = rewardData.premium;
+        } else {
+            // Sinon, donner free
+            reward = rewardData.free;
+        }
+
+        // Vérifier si c'est une récompense prestige réservée aux premium
+        if (reward.type === 'prestige' && !isPremiumOwned) {
+            alert('Achetez le Passe Brawl Premium pour accéder à cette récompense !');
+            return;
+        }
+
         const updates = {
             'battlePassClaimedRewards': firebase.firestore.FieldValue.arrayUnion(level),
         };
 
+        // Ajouter la récompense en fonction du type
         if (reward.type === 'gold') {
             updates['gold'] = firebase.firestore.FieldValue.increment(reward.amount);
         } else if (reward.type === 'powerpoints') {
             const selectedChar = G.selectedChar || 'warrior';
-            const currentPP = (G.playerData.powerPoints && G.playerData.powerPoints[selectedChar]) || 0;
-            updates[`powerPoints.${selectedChar}`] = currentPP + reward.amount;
+            // Utiliser increment pour powerPoints
+            updates[`powerPoints.${selectedChar}`] = firebase.firestore.FieldValue.increment(reward.amount);
+        } else if (reward.type === 'prestige') {
+            updates['prestigePoints'] = firebase.firestore.FieldValue.increment(reward.amount);
         } else if (reward.type === 'chest') {
-            const chests = G.playerData.battlePassChests || [];
-            chests.push(reward.chest);
-            updates['battlePassChests'] = chests;
+            // Utiliser arrayUnion pour ajouter le coffre
+            updates['battlePassChests'] = firebase.firestore.FieldValue.arrayUnion(reward.chest);
         }
 
         await FSDB.collection('players').doc(G.user.uid).update(updates);
@@ -518,7 +722,8 @@ async function claimLevelReward(level) {
             setTimeout(() => notif.remove(), 300);
         }, 2000);
 
-        renderBattlePassRewards();
+        // Re-render (les données se mettent à jour automatiquement via le listener)
+        setTimeout(() => renderBattlePassRewards(), 100);
     } catch (e) {
         console.error('❌ Erreur réclamation récompense:', e);
         alert('Erreur! Réessayez.');
@@ -532,6 +737,13 @@ async function claimQuestReward(questId) {
         const quest = BATTLE_PASS_QUESTS.find(q => q.id === questId);
         if (!quest) return;
 
+        // Vérif: déjà réclamé?
+        const claimed = G.playerData.battlePassQuestsClaimed || [];
+        if (claimed.includes(questId)) {
+            alert('Quête déjà réclamée!');
+            return;
+        }
+
         const updates = {
             'battlePassQuestsClaimed': firebase.firestore.FieldValue.arrayUnion(questId),
         };
@@ -541,7 +753,8 @@ async function claimQuestReward(questId) {
         // Ajouter XP de la quête
         await addBattlePassXP(quest.xp, 'quest');
 
-        renderBattlePassQuests();
+        // Re-render (les données se mettent à jour automatiquement via le listener)
+        setTimeout(() => renderBattlePassQuests(), 100);
     } catch (e) {
         console.error('❌ Erreur réclamation quête:', e);
         alert('Erreur! Réessayez.');
@@ -576,8 +789,11 @@ async function handlePremiumPurchase() {
         await FSDB.collection('players').doc(G.user.uid).update(updates);
         
         alert('🎉 Passe Premium débloqué !');
-        updateBattlePassUI();
-        renderBattlePassRewards();
+        // Les données se mettent à jour automatiquement via le listener
+        setTimeout(() => {
+            updateBattlePassUI();
+            renderBattlePassRewards();
+        }, 100);
     } catch (e) {
         console.error('❌ Erreur achat premium:', e);
         alert('Erreur achat. Réessayez.');
@@ -603,21 +819,19 @@ function onCombatWon(xpReward = 50) {
 }
 
 // ✅ Cette fonction DOIT être appelée après des quêtes complétées
-function onQuestProgress(questId, amount = 1) {
+async function onQuestProgress(questId, amount = 1) {
     if (!G.user || !G.playerData) return;
 
     const quest = BATTLE_PASS_QUESTS.find(q => q.id === questId);
     if (!quest) return;
 
     try {
-        const current = G.playerData.battlePassQuests && G.playerData.battlePassQuests[questId] || 0;
-        const newProgress = current + amount;
-
         const updates = {
-            [`battlePassQuests.${questId}`]: newProgress,
+            [`battlePassQuests.${questId}`]: firebase.firestore.FieldValue.increment(amount),
         };
 
-        FSDB.collection('players').doc(G.user.uid).update(updates);
+        await FSDB.collection('players').doc(G.user.uid).update(updates);
+        // Les données se mettent à jour automatiquement via le listener
     } catch (e) {
         console.error('❌ Erreur progression quête:', e);
     }
