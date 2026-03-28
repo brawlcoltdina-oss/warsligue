@@ -1,0 +1,697 @@
+/* ==========================================
+   WARSLIGUE — CSS PASSE BRAWL
+   ========================================== */
+
+/* ── Animation pulse du bouton ── */
+@keyframes codeBtnPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(253, 203, 110, 0); }
+    50%       { box-shadow: 0 0 0 6px rgba(253, 203, 110, 0.25); }
+}
+
+/* ── Notification Level Up ── */
+@keyframes levelUpPop {
+    0% {
+        opacity: 0;
+        transform: scale(0.5) translateY(20px);
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1) translateY(-80px);
+    }
+}
+
+.battle-pass-level-up-notif {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-50%);
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.battle-pass-level-up-notif.show {
+    animation: levelUpPop 3.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.level-up-content {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    padding: 2rem 3rem;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0.6), 0 10px 40px rgba(0, 0, 0, 0.5);
+    border: 3px solid #FFE55C;
+}
+
+.level-up-text {
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #000;
+    letter-spacing: 0.1em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.reward-text {
+    font-size: 1.2rem;
+    color: #8B4513;
+    font-weight: 700;
+    margin-top: 0.5rem;
+}
+
+/* ── Notification récompense réclamée ── */
+@keyframes rewardClaimedSlide {
+    0% {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.reward-claimed-notif {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #2ECC71, #27AE60);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 700;
+    z-index: 9999;
+    opacity: 0;
+    box-shadow: 0 4px 20px rgba(46, 204, 113, 0.4);
+}
+
+.reward-claimed-notif.show {
+    animation: rewardClaimedSlide 0.4s ease forwards;
+}
+
+/* ── Panel du Passe Brawl ── */
+.battle-pass-panel-content {
+    background: linear-gradient(160deg, #0F0F1E 0%, #1A1A2E 60%, #12102B 100%) !important;
+    border-left: 2px solid rgba(253, 203, 110, 0.35) !important;
+}
+
+.battle-pass-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.2rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+/* ── Section Progression ── */
+.battle-pass-progress-section {
+    background: rgba(108, 92, 231, 0.08);
+    border: 1.5px solid rgba(108, 92, 231, 0.25);
+    border-radius: 16px;
+    padding: 1.2rem;
+}
+
+.battle-pass-header-info {
+    display: flex;
+    gap: 1.2rem;
+    align-items: center;
+}
+
+.level-display {
+    flex-shrink: 0;
+    text-align: center;
+    background: linear-gradient(135deg, rgba(253, 203, 110, 0.15), rgba(108, 92, 231, 0.15));
+    border-radius: 14px;
+    padding: 0.8rem 1.2rem;
+    border: 1.5px solid rgba(253, 203, 110, 0.25);
+}
+
+.level-number {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #FDCB6E;
+    line-height: 1;
+}
+
+.level-label {
+    font-size: 0.75rem;
+    color: rgba(248, 249, 250, 0.6);
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin-top: 0.3rem;
+}
+
+.progress-details {
+    flex: 1;
+}
+
+.progress-bar-container {
+    height: 16px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 0.4rem;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2ECC71, #27AE60);
+    border-radius: 10px;
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+}
+
+.progress-text {
+    font-size: 0.8rem;
+    color: rgba(248, 249, 250, 0.65);
+    font-weight: 600;
+}
+
+.premium-badge {
+    flex-shrink: 0;
+}
+
+.premium-btn-unlock {
+    display: inline-block;
+    padding: 0.6rem 1rem;
+    background: linear-gradient(135deg, #FF3366, #CC0033);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.premium-btn-unlock:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(255, 51, 102, 0.4);
+}
+
+.premium-btn-unlock:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.premium-badge.premium-active {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2));
+    border: 1px solid rgba(255, 215, 0, 0.4);
+    padding: 0.6rem 1rem;
+    border-radius: 10px;
+}
+
+.premium-badge.premium-active .premium-btn-unlock {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+}
+
+/* ── Onglets ── */
+.battle-pass-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1.5px solid rgba(255, 255, 255, 0.1);
+}
+
+.bp-tab {
+    flex: 1;
+    padding: 0.8rem 1rem;
+    background: transparent;
+    border: none;
+    color: rgba(248, 249, 250, 0.5);
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 0.9rem;
+    position: relative;
+    transition: color 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.bp-tab:hover {
+    color: rgba(248, 249, 250, 0.75);
+}
+
+.bp-tab.active {
+    color: #FDCB6E;
+}
+
+.bp-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1.5px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #FDCB6E;
+}
+
+/* ── Contenu onglets ── */
+.battle-pass-tab-content {
+    display: none;
+    animation: tabFadeIn 0.3s ease;
+}
+
+.battle-pass-tab-content.active {
+    display: block;
+}
+
+@keyframes tabFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ── ONGLET 1: Récompenses ── */
+.rewards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.reward-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    aspect-ratio: 3 / 4;
+    background: linear-gradient(135deg, rgba(26, 26, 46, 0.8), rgba(15, 15, 30, 0.9));
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 1rem 0.8rem;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-align: center;
+    color: rgba(248, 249, 250, 0.7);
+}
+
+.reward-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.reward-card.locked {
+    opacity: 0.6;
+    cursor: not-allowed;
+    filter: saturate(0.7);
+    border-color: rgba(160, 160, 176, 0.2);
+}
+
+.reward-card.locked:hover {
+    transform: none;
+    border-color: rgba(160, 160, 176, 0.2);
+}
+
+.reward-card.unlocked {
+    background: linear-gradient(135deg, rgba(46, 204, 113, 0.12), rgba(108, 92, 231, 0.12));
+    border-color: rgba(46, 204, 113, 0.35);
+    color: rgba(248, 249, 250, 0.9);
+}
+
+.reward-card.unlocked:hover:not(.claimed) {
+    transform: translateY(-6px) scale(1.02);
+    border-color: rgba(46, 204, 113, 0.6);
+    box-shadow: 0 8px 24px rgba(46, 204, 113, 0.25), inset 0 0 20px rgba(46, 204, 113, 0.1);
+}
+
+.reward-card.premium {
+    border-color: rgba(255, 215, 0, 0.4);
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.08));
+}
+
+.reward-card.premium.unlocked {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.12));
+    border-color: rgba(255, 215, 0, 0.5);
+}
+
+.reward-card.premium.unlocked:hover:not(.claimed) {
+    border-color: rgba(255, 215, 0, 0.7);
+    box-shadow: 0 8px 24px rgba(255, 215, 0, 0.3), inset 0 0 20px rgba(255, 215, 0, 0.15);
+}
+
+.reward-card.claimed {
+    background: linear-gradient(135deg, rgba(46, 204, 113, 0.08), rgba(46, 204, 113, 0.04));
+    border-color: rgba(46, 204, 113, 0.25);
+    opacity: 0.65;
+    cursor: default;
+}
+
+.reward-card.claimed:hover {
+    transform: none;
+}
+
+/* Contenu de la carte */
+.reward-card-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    z-index: 2;
+    flex: 1;
+    justify-content: center;
+    position: relative;
+}
+
+.reward-level {
+    font-size: 0.7rem;
+    color: rgba(160, 160, 176, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 800;
+}
+
+.reward-icon {
+    font-size: 2.2rem;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+}
+
+.reward-label {
+    font-size: 0.75rem;
+    word-wrap: break-word;
+    line-height: 1.3;
+    color: rgba(248, 249, 250, 0.85);
+    font-weight: 700;
+}
+
+/* Cadenas */
+.reward-lock {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 1.2rem;
+    opacity: 0;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.reward-card.locked .reward-lock {
+    opacity: 1;
+}
+
+.reward-card.unlocked .reward-lock {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Badge "Réclamée" */
+.claimed-badge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    color: #2ECC71;
+    text-shadow: 0 0 12px rgba(46, 204, 113, 0.8);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 3;
+}
+
+.reward-card.unlocked:not(.claimed) .reward-card-content::after {
+    content: 'Cliquez !';
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    color: #2ECC71;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+}
+
+.reward-card.unlocked:not(.claimed):hover .reward-card-content::after {
+    opacity: 1;
+}
+
+.reward-card.claimed .claimed-badge {
+    opacity: 1;
+}
+
+/* ── ONGLET 2: Quêtes ── */
+.quests-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.quest-item {
+    display: flex;
+    flex-direction: column;
+    padding: 1.2rem;
+    background: linear-gradient(135deg, rgba(108, 92, 231, 0.08), rgba(162, 155, 254, 0.04));
+    border: 2px solid rgba(108, 92, 231, 0.2);
+    border-radius: 14px;
+    transition: all 0.3s ease;
+}
+
+.quest-item:hover {
+    border-color: rgba(108, 92, 231, 0.4);
+    background: linear-gradient(135deg, rgba(108, 92, 231, 0.12), rgba(162, 155, 254, 0.08));
+}
+
+.quest-item.completed {
+    border-color: rgba(46, 204, 113, 0.4);
+    background: linear-gradient(135deg, rgba(46, 204, 113, 0.1), rgba(46, 204, 113, 0.05));
+}
+
+.quest-item.claimed {
+    opacity: 0.65;
+    border-color: rgba(46, 204, 113, 0.25);
+}
+
+.quest-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.quest-info {
+    flex: 1;
+}
+
+.quest-name {
+    font-size: 1rem;
+    font-weight: 900;
+    color: #F8F9FA;
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.02em;
+}
+
+.quest-desc {
+    font-size: 0.85rem;
+    color: rgba(160, 160, 176, 0.75);
+    margin-bottom: 0;
+}
+
+.quest-reward-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.6rem 1rem;
+    background: linear-gradient(135deg, rgba(162, 155, 254, 0.2), rgba(108, 92, 231, 0.15));
+    border-radius: 10px;
+    border: 1px solid rgba(162, 155, 254, 0.3);
+    min-width: 80px;
+    text-align: center;
+}
+
+.quest-xp-value {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: #A29BFE;
+}
+
+.quest-xp-label {
+    font-size: 0.65rem;
+    color: rgba(162, 155, 254, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+}
+
+.quest-progress-container {
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+    margin-bottom: 0.8rem;
+}
+
+.quest-progress-bar {
+    flex: 1;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.quest-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6C5CE7, #A29BFE);
+    border-radius: 8px;
+    transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 12px rgba(162, 155, 254, 0.5);
+}
+
+.quest-progress-text {
+    font-size: 0.8rem;
+    color: rgba(160, 160, 176, 0.7);
+    min-width: 50px;
+    text-align: right;
+    font-weight: 700;
+}
+
+.btn-claim-quest {
+    padding: 0.7rem 1.4rem;
+    background: linear-gradient(135deg, #6C5CE7, #A29BFE);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    align-self: flex-start;
+    box-shadow: 0 4px 16px rgba(162, 155, 254, 0.3);
+}
+
+.btn-claim-quest:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(162, 155, 254, 0.5);
+}
+
+.btn-claim-quest:active {
+    transform: translateY(0);
+}
+
+.quest-claimed-badge {
+    font-size: 1.4rem;
+    color: #2ECC71;
+    text-shadow: 0 0 8px rgba(46, 204, 113, 0.8);
+    align-self: flex-start;
+}
+
+/* ── Scrollbars personnalisées ── */
+.rewards-grid::-webkit-scrollbar,
+.quests-list::-webkit-scrollbar,
+.battle-pass-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.rewards-grid::-webkit-scrollbar-track,
+.quests-list::-webkit-scrollbar-track,
+.battle-pass-body::-webkit-scrollbar-track {
+    background: linear-gradient(180deg, rgba(108, 92, 231, 0.1), rgba(253, 203, 110, 0.05));
+    border-radius: 10px;
+}
+
+.rewards-grid::-webkit-scrollbar-thumb,
+.quests-list::-webkit-scrollbar-thumb,
+.battle-pass-body::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(108, 92, 231, 0.4), rgba(162, 155, 254, 0.3));
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.rewards-grid::-webkit-scrollbar-thumb:hover,
+.quests-list::-webkit-scrollbar-thumb:hover,
+.battle-pass-body::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(108, 92, 231, 0.6), rgba(162, 155, 254, 0.5));
+    background-clip: padding-box;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+    .rewards-grid {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+    }
+
+    .battle-pass-header-info {
+        flex-wrap: wrap;
+        gap: 0.8rem;
+    }
+
+    .progress-details {
+        flex: 1 100%;
+    }
+
+    .battle-pass-tabs {
+        margin: 0 -1.2rem;
+        padding: 0 1.2rem;
+    }
+
+    .level-up-content {
+        padding: 1.5rem 2rem;
+    }
+
+    .level-up-text {
+        font-size: 1.8rem;
+    }
+
+    .reward-card {
+        padding: 0.8rem;
+        aspect-ratio: auto;
+    }
+
+    .reward-icon {
+        font-size: 2rem;
+    }
+
+    .reward-label {
+        font-size: 0.7rem;
+    }
+
+    .quest-item {
+        padding: 1rem;
+    }
+
+    .quest-header {
+        flex-direction: column;
+        gap: 0.8rem;
+        align-items: flex-start;
+    }
+
+    .quest-reward-badge {
+        min-width: auto;
+        align-self: flex-start;
+    }
+
+    .btn-claim-quest {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.8rem;
+    }
+
+    .premium-btn-unlock {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.8rem;
+    }
+}

@@ -165,7 +165,7 @@ AUTH.onAuthStateChanged(async (user) => {
         listenPlayerData(user.uid);
         if (typeof initOnlineTracking === 'function') initOnlineTracking();
         if (typeof initFriendsSystem  === 'function') initFriendsSystem();
-        if (typeof initCombatCodesSystem === 'function') initCombatCodesSystem();
+        if (typeof initBattlePassSystem === 'function') initBattlePassSystem();
         showScreen('main-menu');
     } else {
         G.user = null;
@@ -193,6 +193,22 @@ async function ensurePlayerDoc(user) {
             ownedSkins: [],
             powerPoints: {},
             upgrades: {},
+            // ✅ Initialisation Passe Brawl
+            battlePassLevel: 1,
+            battlePassXP: 0,
+            battlePassPremium: false,
+            battlePassClaimedRewards: [],
+            battlePassQuestsClaimed: [],
+            battlePassQuests: {
+                quest_1: 0,
+                quest_2: 0,
+                quest_3: 0,
+                quest_4: 0,
+                quest_5: 0,
+                quest_6: 0,
+                quest_7: 0,
+            },
+            battlePassChests: [],
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -206,6 +222,24 @@ async function ensurePlayerDoc(user) {
         if (data.gold === undefined) updates.gold = 100;
         if (!data.powerPoints) updates.powerPoints = {};
         if (!data.upgrades) updates.upgrades = {};
+        // ✅ Migration Passe Brawl pour anciens joueurs
+        if (data.battlePassLevel === undefined) {
+            updates.battlePassLevel = 1;
+            updates.battlePassXP = 0;
+            updates.battlePassPremium = false;
+            updates.battlePassClaimedRewards = [];
+            updates.battlePassQuestsClaimed = [];
+            updates.battlePassQuests = {
+                quest_1: 0,
+                quest_2: 0,
+                quest_3: 0,
+                quest_4: 0,
+                quest_5: 0,
+                quest_6: 0,
+                quest_7: 0,
+            };
+            updates.battlePassChests = [];
+        }
         await FSDB.collection('players').doc(user.uid).update(updates);
     }
 }
@@ -798,6 +832,21 @@ async function saveZombieResults(survivalTime, gold, trophy) {
             timestamp:    firebase.firestore.FieldValue.serverTimestamp(),
             survivalTime, goldEarned: gold, trophyEarned: trophy
         });
+
+        // ✅ Intégration Passe Brawl : gain d'XP basé sur le temps de survie
+        const xpGained = Math.floor(survivalTime * 2 + 10); // 1 combat = environ 30-150 XP
+        if (typeof onCombatWon === 'function') {
+            onCombatWon(xpGained);
+        }
+
+        // ✅ Progression des quêtes
+        if (typeof onQuestProgress === 'function') {
+            onQuestProgress('quest_1', 1);  // Première victoire
+            onQuestProgress('quest_2', 1);  // Guerrier (5 victoires)
+            onQuestProgress('quest_3', 1);  // Champion (10 victoires)
+            onQuestProgress('quest_4', gold); // Collecteur (1000 pièces)
+        }
+
     } catch (e) {
         console.error('Erreur sauvegarde résultats:', e);
     }
@@ -806,6 +855,8 @@ async function saveZombieResults(survivalTime, gold, trophy) {
 function showZombieResults(survivalTime, gold, trophy) {
     const resultTitle = document.getElementById('result-title');
     const resultStats = document.querySelector('#result-screen .result-stats');
+
+    const xpGained = Math.floor(survivalTime * 2 + 10);
 
     if (resultTitle) resultTitle.textContent = `🧟 SURVIVANT! (${survivalTime}s)`;
     if (resultStats) {
@@ -821,6 +872,10 @@ function showZombieResults(survivalTime, gold, trophy) {
             <div class="stat-row">
                 <span class="stat-label">Trophées gagnés</span>
                 <span class="stat-value trophy-change">+${trophy} 🏆</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">XP Passe Brawl</span>
+                <span class="stat-value" style="color: #A29BFE; font-weight: 700;">+${xpGained} ⚡</span>
             </div>
         `;
     }
