@@ -197,7 +197,8 @@ async function ensurePlayerDoc(user) {
             battlePassLevel: 1,
             battlePassXP: 0,
             battlePassPremium: false,
-            battlePassClaimedRewards: [],
+            battlePassClaimedRewards: { free: [], premium: [] },
+            battlePassAutoApplied: { free: [], premium: [] },
             battlePassQuestsClaimed: [],
             battlePassQuests: {
                 quest_1: 0,
@@ -227,7 +228,8 @@ async function ensurePlayerDoc(user) {
             updates.battlePassLevel = 1;
             updates.battlePassXP = 0;
             updates.battlePassPremium = false;
-            updates.battlePassClaimedRewards = [];
+            updates.battlePassClaimedRewards = { free: [], premium: [] };
+            updates.battlePassAutoApplied = { free: [], premium: [] };
             updates.battlePassQuestsClaimed = [];
             updates.battlePassQuests = {
                 quest_1: 0,
@@ -240,6 +242,17 @@ async function ensurePlayerDoc(user) {
             };
             updates.battlePassChests = [];
         }
+
+        // Migration : les anciens joueurs avaient un array global battlePassClaimedRewards
+        if (data.battlePassClaimedRewards && Array.isArray(data.battlePassClaimedRewards)) {
+            updates.battlePassClaimedRewards = { free: data.battlePassClaimedRewards, premium: [] };
+        }
+
+        // Initialiser battlePassAutoApplied si manquant
+        if (!data.battlePassAutoApplied) {
+            updates.battlePassAutoApplied = { free: [], premium: [] };
+        }
+
         await FSDB.collection('players').doc(user.uid).update(updates);
     }
 }

@@ -219,6 +219,41 @@ const BATTLE_PASS_REWARDS = {
 };
 
 /* =============================================
+   UTILITAIRES PASSE BRAWL
+   ============================================= */
+function getClaimedRewards() {
+    if (!G.playerData) return { free: [], premium: [] };
+
+    const claimed = G.playerData.battlePassClaimedRewards;
+    if (!claimed) return { free: [], premium: [] };
+
+    if (Array.isArray(claimed)) {
+        return { free: claimed, premium: [] };
+    }
+
+    return {
+        free: Array.isArray(claimed.free) ? claimed.free : [],
+        premium: Array.isArray(claimed.premium) ? claimed.premium : [],
+    };
+}
+
+function getAutoAppliedRewards() {
+    if (!G.playerData) return { free: [], premium: [] };
+
+    const autoApplied = G.playerData.battlePassAutoApplied;
+    if (!autoApplied) return { free: [], premium: [] };
+
+    return {
+        free: Array.isArray(autoApplied.free) ? autoApplied.free : [],
+        premium: Array.isArray(autoApplied.premium) ? autoApplied.premium : [],
+    };
+}
+
+function getClaimedArrayField(isPremium) {
+    return isPremium ? 'battlePassClaimedRewards.premium' : 'battlePassClaimedRewards.free';
+}
+
+/* =============================================
    QUÊTES DU PASSE BRAWL
    ============================================= */
 const BATTLE_PASS_QUESTS = [
@@ -290,42 +325,66 @@ async function awardLevelReward(level) {
     if (!rewardData) return;
 
     try {
-        const updates = {};
         const isPremiumOwned = G.playerData.battlePassPremium;
-        
-        // Sélectionner free ou premium
-        let reward = isPremiumOwned ? rewardData.premium : rewardData.free;
 
-        if (reward.type === 'gold') {
-            updates['gold'] = firebase.firestore.FieldValue.increment(reward.amount);
-        } else if (reward.type === 'powerpoints') {
-            const selectedChar = G.selectedChar || 'warrior';
-            // Utiliser increment pour les powerPoints
-            updates[`powerPoints.${selectedChar}`] = firebase.firestore.FieldValue.increment(reward.amount);
-        } else if (reward.type === 'chest') {
-            // Utiliser arrayUnion pour ajouter à l'array de coffres
-            updates['battlePassChests'] = firebase.firestore.FieldValue.arrayUnion(reward.chest);
-        } else if (reward.type === 'prestige') {
-            // Prestige pour premium seulement
-            if (isPremiumOwned) {
-                updates['prestigePoints'] = firebase.firestore.FieldValue.increment(reward.amount);
+        let goldToAdd = 0;
+        let powerPointsToAdd = 0;
+        let prestigeToAdd = 0;
+        const selectedChar = G.selectedChar || 'warrior';
+        const chestRewards = [];
+
+        const accumulateReward = (reward) => {
+            if (!reward || !reward.type) return;
+            if (reward.type === 'gold') {
+                goldToAdd += reward.amount;
+            } else if (reward.type === 'powerpoints') {
+                powerPointsToAdd += reward.amount;
+            } else if (reward.type === 'prestige') {
+                prestigeToAdd += reward.amount;
+            } else if (reward.type === 'chest') {
+                chestRewards.push(reward.chest);
             }
+        };
+
+        accumulateReward(rewardData.free);
+        if (isPremiumOwned) {
+            accumulateReward(rewardData.premium);
         }
 
-        // Toujours marquer le niveau comme auto-récompensé
-        updates['battlePassClaimedRewards'] = firebase.firestore.FieldValue.arrayUnion(level);
+        const updates = {};
+        // Marquer que les récompenses ont été appliquées automatiquement
+        updates['battlePassAutoApplied.free'] = firebase.firestore.FieldValue.arrayUnion(level);
+        if (isPremiumOwned) {
+            updates['battlePassAutoApplied.premium'] = firebase.firestore.FieldValue.arrayUnion(level);
+        }
+
+        if (goldToAdd > 0) updates['gold'] = firebase.firestore.FieldValue.increment(goldToAdd);
+        if (powerPointsToAdd > 0) updates[`powerPoints.${selectedChar}`] = firebase.firestore.FieldValue.increment(powerPointsToAdd);
+        if (prestigeToAdd > 0) updates['prestigePoints'] = firebase.firestore.FieldValue.increment(prestigeToAdd);
+        if (chestRewards.length > 0) updates['battlePassChests'] = firebase.firestore.FieldValue.arrayUnion(...new Set(chestRewards));
 
         await FSDB.collection('players').doc(G.user.uid).update(updates);
-        
-        console.log(`✅ Récompense niveau ${level}: ${reward.label}`);
+
+        const logReward = isPremiumOwned ? `${rewardData.free.label} et ${rewardData.premium.label}` : rewardData.free.label;
+        console.log(`✅ Récompense niveau ${level}: ${logReward}`);
+
+        // Ouvrir automatiquement les coffres récompensés
+        if (chestRewards.length > 0) {
+            for (const chestType of chestRewards) {
+                await openBattlePassChest(chestType);
+            }
+        }
     } catch (e) {
         console.error('❌ Erreur attribution récompense:', e);
     }
 }
 
 function showLevelUpNotification(level) {
-    const reward = BATTLE_PASS_REWARDS[level];
-    if (!reward) return;
+    const rewardData = BATTLE_PASS_REWARDS[level];
+    if (!rewardData) return;
+
+    const isPremiumOwned = G.playerData && G.playerData.battlePassPremium;
+    const reward = isPremiumOwned ? rewardData.premium : rewardData.free;
 
     // Créer une notification visuelle
     const notif = document.createElement('div');
@@ -525,6 +584,7 @@ function renderBattlePassRewards() {
 
     const level = G.playerData.battlePassLevel || 1;
     const isPremiumOwned = G.playerData.battlePassPremium;
+    const claimedRewards = getClaimedRewards();
     let freeHtml = '';
     let premiumHtml = '';
 
@@ -533,23 +593,24 @@ function renderBattlePassRewards() {
         if (!rewardData) continue;
 
         const isUnlocked = i <= level;
-        const isClaimed = G.playerData.battlePassClaimedRewards && G.playerData.battlePassClaimedRewards.includes(i);
+        const isFreeClaimed = claimedRewards.free.includes(i);
+        const isPremiumClaimed = claimedRewards.premium.includes(i);
 
         // CÔTÉ GRATUIT
         const freeReward = rewardData.free;
         const freeCardClass = [
             'reward-item',
             isUnlocked ? 'unlocked' : 'locked',
-            isClaimed ? 'claimed' : ''
+            isFreeClaimed ? 'claimed' : ''
         ].filter(Boolean).join(' ');
 
         freeHtml += `
-            <div class="${freeCardClass}" ${isUnlocked && !isClaimed ? `onclick="claimLevelReward(${i})"` : ''}>
+            <div class="${freeCardClass}" ${isUnlocked && !isFreeClaimed ? `onclick="claimLevelReward(${i})"` : ''}>
                 <div class="reward-item-inner">
                     ${!isUnlocked ? '<div class="item-lock">🔒</div>' : ''}
                     <div class="item-icon">${getRewardIcon(freeReward)}</div>
                     <div class="item-label">${freeReward.label}</div>
-                    ${isClaimed ? '<div class="item-claimed">✓</div>' : ''}
+                    ${isFreeClaimed ? '<div class="item-claimed">✓</div>' : ''}
                 </div>
                 <div class="level-badge">${i}</div>
             </div>
@@ -557,12 +618,12 @@ function renderBattlePassRewards() {
 
         // CÔTÉ PREMIUM
         const premiumReward = rewardData.premium;
-        const canClaimPremium = isUnlocked && isPremiumOwned && !isClaimed;
+        const canClaimPremium = isUnlocked && isPremiumOwned && !isPremiumClaimed;
         const premiumCardClass = [
             'reward-item',
             'premium-item',
             isUnlocked ? 'unlocked' : 'locked',
-            isClaimed ? 'claimed' : '',
+            isPremiumClaimed ? 'claimed' : '',
             !isPremiumOwned && isUnlocked ? 'locked-premium' : ''
         ].filter(Boolean).join(' ');
 
@@ -573,7 +634,7 @@ function renderBattlePassRewards() {
                     ${isUnlocked && !isPremiumOwned ? '<div class="item-premium-lock">⭐</div>' : ''}
                     <div class="item-icon">${getRewardIcon(premiumReward)}</div>
                     <div class="item-label">${premiumReward.label}</div>
-                    ${isClaimed ? '<div class="item-claimed">✓</div>' : ''}
+                    ${isPremiumClaimed ? '<div class="item-claimed">✓</div>' : ''}
                 </div>
                 <div class="level-badge premium-badge">${i}</div>
             </div>
@@ -659,8 +720,15 @@ async function claimLevelReward(level) {
     if (!rewardData) return;
 
     // Vérif : déjà réclamé ?
-    const claimed = G.playerData.battlePassClaimedRewards || [];
-    if (claimed.includes(level)) {
+    const claimedRewards = getClaimedRewards();
+    const autoAppliedRewards = getAutoAppliedRewards();
+    const isFreeClaimed = claimedRewards.free.includes(level);
+    const isPremiumClaimed = claimedRewards.premium.includes(level);
+    const isFreeAutoApplied = autoAppliedRewards.free.includes(level);
+    const isPremiumAutoApplied = autoAppliedRewards.premium.includes(level);
+    const isPremiumOwned = G.playerData.battlePassPremium;
+
+    if (isFreeClaimed && (!isPremiumOwned || isPremiumClaimed)) {
         alert('Récompense déjà réclamée !');
         return;
     }
@@ -674,47 +742,76 @@ async function claimLevelReward(level) {
 
     try {
         const isPremiumOwned = G.playerData.battlePassPremium;
-        let reward = null;
+        const freeReward = rewardData.free;
+        const premiumReward = rewardData.premium;
 
-        // Décide quelle récompense octroyer (free ou premium)
-        if (isPremiumOwned) {
-            // Si premium, donner la récompense premium
-            reward = rewardData.premium;
-        } else {
-            // Sinon, donner free
-            reward = rewardData.free;
+        let goldToAdd = 0;
+        let powerPointsToAdd = 0;
+        let prestigeToAdd = 0;
+        const selectedChar = G.selectedChar || 'warrior';
+        const chestRewards = [];
+
+        const accumulateReward = (reward) => {
+            if (!reward || !reward.type) return;
+            if (reward.type === 'gold') {
+                goldToAdd += reward.amount;
+            } else if (reward.type === 'powerpoints') {
+                powerPointsToAdd += reward.amount;
+            } else if (reward.type === 'prestige') {
+                prestigeToAdd += reward.amount;
+            } else if (reward.type === 'chest') {
+                chestRewards.push(reward.chest);
+            }
+        };
+
+        let claimFreeNow = false;
+        let claimPremiumNow = false;
+
+        // Appliquer seulement si pas déjà appliqué automatiquement
+        if (!isFreeAutoApplied) {
+            accumulateReward(freeReward);
+            claimFreeNow = true;
         }
 
-        // Vérifier si c'est une récompense prestige réservée aux premium
-        if (reward.type === 'prestige' && !isPremiumOwned) {
-            alert('Achetez le Passe Brawl Premium pour accéder à cette récompense !');
+        if (isPremiumOwned && !isPremiumAutoApplied) {
+            accumulateReward(premiumReward);
+            claimPremiumNow = true;
+        }
+
+        // Toujours permettre la réclamation pour marquer visuellement comme réclamé
+        // même si les récompenses ont déjà été appliquées automatiquement
+        const canClaimFree = !isFreeClaimed;
+        const canClaimPremium = isPremiumOwned && !isPremiumClaimed;
+
+        if (!canClaimFree && !canClaimPremium) {
+            alert('Récompense déjà réclamée !');
             return;
         }
 
-        const updates = {
-            'battlePassClaimedRewards': firebase.firestore.FieldValue.arrayUnion(level),
-        };
-
-        // Ajouter la récompense en fonction du type
-        if (reward.type === 'gold') {
-            updates['gold'] = firebase.firestore.FieldValue.increment(reward.amount);
-        } else if (reward.type === 'powerpoints') {
-            const selectedChar = G.selectedChar || 'warrior';
-            // Utiliser increment pour powerPoints
-            updates[`powerPoints.${selectedChar}`] = firebase.firestore.FieldValue.increment(reward.amount);
-        } else if (reward.type === 'prestige') {
-            updates['prestigePoints'] = firebase.firestore.FieldValue.increment(reward.amount);
-        } else if (reward.type === 'chest') {
-            // Utiliser arrayUnion pour ajouter le coffre
-            updates['battlePassChests'] = firebase.firestore.FieldValue.arrayUnion(reward.chest);
+        const updates = {};
+        if (canClaimFree) {
+            updates['battlePassClaimedRewards.free'] = firebase.firestore.FieldValue.arrayUnion(level);
+        }
+        if (canClaimPremium) {
+            updates['battlePassClaimedRewards.premium'] = firebase.firestore.FieldValue.arrayUnion(level);
         }
 
+        // Appliquer les récompenses seulement si elles n'ont pas été appliquées automatiquement
+        if (goldToAdd > 0) updates['gold'] = firebase.firestore.FieldValue.increment(goldToAdd);
+        if (powerPointsToAdd > 0) updates[`powerPoints.${selectedChar}`] = firebase.firestore.FieldValue.increment(powerPointsToAdd);
+        if (prestigeToAdd > 0) updates['prestigePoints'] = firebase.firestore.FieldValue.increment(prestigeToAdd);
+        if (chestRewards.length > 0) updates['battlePassChests'] = firebase.firestore.FieldValue.arrayUnion(...new Set(chestRewards));
+
         await FSDB.collection('players').doc(G.user.uid).update(updates);
-        
-        // Notification
+
+        let notifLabel = [];
+        if (canClaimFree) notifLabel.push(freeReward.label);
+        if (canClaimPremium) notifLabel.push(premiumReward.label);
+        notifLabel = notifLabel.join(' + ');
+
         const notif = document.createElement('div');
         notif.className = 'reward-claimed-notif';
-        notif.textContent = `🎉 ${reward.label} réclamé !`;
+        notif.textContent = `🎉 ${notifLabel} réclamé !`;
         document.body.appendChild(notif);
         setTimeout(() => notif.classList.add('show'), 100);
         setTimeout(() => {
@@ -722,11 +819,64 @@ async function claimLevelReward(level) {
             setTimeout(() => notif.remove(), 300);
         }, 2000);
 
-        // Re-render (les données se mettent à jour automatiquement via le listener)
+        // Ouvrir automatiquement les coffres récompensés
+        if (chestRewards.length > 0) {
+            for (const chestType of chestRewards) {
+                await openBattlePassChest(chestType);
+            }
+        }
+
         setTimeout(() => renderBattlePassRewards(), 100);
     } catch (e) {
         console.error('❌ Erreur réclamation récompense:', e);
         alert('Erreur! Réessayez.');
+    }
+}
+
+async function openBattlePassChest(chestType) {
+    if (!G.user || !G.playerData) return;
+
+    try {
+        console.log(`🎁 Ouverture automatique du coffre ${chestType} du passe brawl...`);
+
+        // Générer la récompense
+        const reward = generateChestReward(chestType, G.playerData);
+
+        // Appliquer la récompense
+        const updates = { gold: firebase.firestore.FieldValue.increment(reward.gold) };
+        if (!G.playerData.powerPoints) G.playerData.powerPoints = {};
+
+        const selectedChar = G.selectedChar || 'warrior';
+        const currentPowerPoints = (G.playerData.powerPoints && G.playerData.powerPoints[selectedChar]) || 0;
+        updates[`powerPoints.${selectedChar}`] = currentPowerPoints + reward.powerPoints;
+
+        if (reward.character && reward.isNew) {
+            updates.ownedCharacters = firebase.firestore.FieldValue.arrayUnion(reward.character);
+        }
+
+        await FSDB.collection('players').doc(G.user.uid).update(updates);
+
+        // Afficher la notification de récompense
+        const chest = CHEST_TYPES[chestType];
+        let rewardText = `+${reward.gold} 💰 +${reward.powerPoints} ⚡`;
+        if (reward.character && reward.isNew) {
+            const char = CHARACTERS[reward.character];
+            rewardText += ` + ${char.name} !`;
+        }
+
+        const notif = document.createElement('div');
+        notif.className = 'reward-claimed-notif';
+        notif.textContent = `🎁 ${chest.name} ouvert : ${rewardText}`;
+        document.body.appendChild(notif);
+        setTimeout(() => notif.classList.add('show'), 100);
+        setTimeout(() => {
+            notif.classList.remove('show');
+            setTimeout(() => notif.remove(), 300);
+        }, 4000);
+
+        console.log(`✅ Coffre ${chestType} ouvert avec succès:`, reward);
+    } catch (e) {
+        console.error('❌ Erreur ouverture coffre passe brawl:', e);
     }
 }
 
