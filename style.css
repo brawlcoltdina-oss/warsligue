@@ -235,7 +235,7 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 }
 .player-stats h3 { font-size: 1.05rem; font-weight: 700; }
 .stats-row { display: flex; gap: 1rem; margin-top: .3rem; }
-.trophies, .gold { display: flex; align-items: center; gap: .35rem; color: var(--accent); font-weight: 700; font-size: .95rem; }
+.trophies, .gold, .league, .power-points { display: flex; align-items: center; gap: .35rem; color: var(--accent); font-weight: 700; font-size: .95rem; }
 
 .menu-content {
     position: relative; z-index: 1;

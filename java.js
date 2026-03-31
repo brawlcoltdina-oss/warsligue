@@ -284,6 +284,8 @@ function updateMenuUI() {
     const charPowerPoints = (G.playerData.powerPoints && G.playerData.powerPoints[selectedChar]) || 0;
     const ppElement = document.getElementById('player-powerpoints');
     if (ppElement) ppElement.textContent = charPowerPoints;
+
+    updateLeagueDisplay();
 }
 
 /* =============================================
@@ -1095,7 +1097,139 @@ function update() {
     G.player.x = newX;
     G.player.y = newY;
 
-    updateZombieMode();
+    // Update projectiles
+    for (let i = G.projectiles.length - 1; i >= 0; i--) {
+        const proj = G.projectiles[i];
+        proj.x += proj.vx;
+        proj.y += proj.vy;
+        proj.life--;
+
+        if (proj.x < 0 || proj.x > G.canvas.width || proj.y < 0 || proj.y > G.canvas.height || proj.life <= 0) {
+            G.projectiles.splice(i, 1);
+            continue;
+        }
+
+        // Collision with zombies
+        if (G.gameMode === 'zombie') {
+            for (let j = G.zombies.length - 1; j >= 0; j--) {
+                const zombie = G.zombies[j];
+                const dx = proj.x - zombie.x;
+                const dy = proj.y - zombie.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < proj.size + zombie.radius) {
+                    zombie.hp -= proj.damage;
+                    if (zombie.hp <= 0) {
+                        G.zombies.splice(j, 1);
+                        // Add particles or effects
+                    }
+                    G.projectiles.splice(i, 1);
+                    break;
+                }
+            }
+        }
+    }
+
+    // Update particles
+    for (let i = G.particles.length - 1; i >= 0; i--) {
+        const p = G.particles[i];
+        p.life--;
+        if (p.life <= 0) {
+            G.particles.splice(i, 1);
+        }
+    }
+
+    if (G.gameMode === 'zombie') {
+        updateZombieMode();
+    }
+}
+function updatePlayer() {
+    if (!G.player) return;
+
+    let dx = 0, dy = 0;
+    if (G.keys['z'] || G.keys['w']) dy -= 1;
+    if (G.keys['s']) dy += 1;
+    if (G.keys['q'] || G.keys['a']) dx -= 1;
+    if (G.keys['d']) dx += 1;
+
+    if (dx !== 0 || dy !== 0) {
+        const len = Math.sqrt(dx*dx + dy*dy);
+        dx /= len; dy /= len;
+        G.player.x += dx * G.player.speed;
+        G.player.y += dy * G.player.speed;
+
+        // Limites du canvas
+        G.player.x = Math.max(G.player.radius, Math.min(G.canvas.width - G.player.radius, G.player.x));
+        G.player.y = Math.max(G.player.radius, Math.min(G.canvas.height - G.player.radius, G.player.y));
+    }
+}
+
+function updateControls() {
+    // Rien pour l'instant, géré dans les event listeners
+}
+
+function draw() {
+    G.ctx.clearRect(0, 0, G.canvas.width, G.canvas.height);
+
+    // Draw walls (if any)
+    for (const wall of G.walls) {
+        G.ctx.fillStyle = wall.color;
+        G.ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+    }
+
+    // Draw zombies
+    for (const zombie of G.zombies) {
+        drawEntity(G.ctx, zombie);
+    }
+
+    // Draw opponent (league mode)
+    if (G.gameMode === 'league' && G.opponent) {
+        drawEntity(G.ctx, G.opponent);
+    }
+
+    // Draw player
+    if (G.player) {
+        drawEntity(G.ctx, G.player);
+    }
+
+    // Draw projectiles
+    for (const proj of G.projectiles) {
+        G.ctx.save();
+        G.ctx.fillStyle = proj.color;
+        G.ctx.beginPath();
+        G.ctx.arc(proj.x, proj.y, proj.size, 0, Math.PI * 2);
+        G.ctx.fill();
+        G.ctx.restore();
+    }
+
+    // Draw particles
+    for (const p of G.particles) {
+        G.ctx.save();
+        G.ctx.globalAlpha = p.life / p.maxLife;
+        G.ctx.fillStyle = p.color;
+        G.ctx.beginPath();
+        G.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        G.ctx.fill();
+        G.ctx.restore();
+    }
+
+    // Draw aim
+    if (G.isAiming && G.player) {
+        drawAim();
+    }
+}
+
+function gameLoop() {
+    if (G.matchEnded) return;
+
+    // Update
+    updatePlayer();
+    updateControls();
+
+    if (G.gameMode === 'zombie') {
+        updateZombieMode();
+    } else if (G.gameMode === 'league') {
+        updateLeagueMode();
+    }
 
     for (let i = G.projectiles.length - 1; i >= 0; i--) {
         const proj = G.projectiles[i];
@@ -1133,6 +1267,11 @@ function update() {
         p.x += p.vx; p.y += p.vy;
         p.vx *= 0.95; p.vy *= 0.95;
     }
+
+    // Draw
+    draw();
+
+    G.rafId = requestAnimationFrame(gameLoop);
 }
 
 /* =============================================
