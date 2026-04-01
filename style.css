@@ -212,9 +212,30 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     flex-direction: column;
     background: linear-gradient(150deg, var(--darker-bg) 0%, var(--dark-bg) 100%);
     overflow-y: auto;
+    padding-bottom: 110px; /* espace pour le bouton jouer en bas */
 }
 .menu-bg-anim {
     position: absolute; inset: 0; pointer-events: none; z-index: 0;
+
+.bottom-play-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 15;
+    pointer-events: none;
+}
+
+.bottom-play-btn {
+    pointer-events: all;
+    width: min(560px, 94%);
+    border-radius: 16px;
+    padding: 1rem 1.3rem;
+    font-size: 1.15rem;
+}
     background:
         radial-gradient(ellipse at 20% 70%, rgba(108,92,231,.1) 0%, transparent 60%),
         radial-gradient(ellipse at 80% 20%, rgba(255,51,102,.08) 0%, transparent 60%);

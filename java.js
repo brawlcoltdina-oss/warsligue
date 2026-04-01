@@ -33,6 +33,7 @@ const G = {
     rafId: null,
 
     selectedChar: 'warrior',
+    selectedMode: 'zombie',
 
     keys: {},
     keydownFn: null,
@@ -286,7 +287,25 @@ function updateMenuUI() {
     if (ppElement) ppElement.textContent = charPowerPoints;
 
     updateLeagueDisplay();
+    updateModeUI();
 }
+
+function updateModeUI() {
+    const modeBtn = document.getElementById('mode-btn');
+    if (!modeBtn) return;
+    const mode = G.selectedMode || 'zombie';
+    if (mode === 'zombie') {
+        modeBtn.innerHTML = `<span class="btn-icon">🧟</span><span>MODE : ZOMBIE</span>`;
+    } else {
+        modeBtn.innerHTML = `<span class="btn-icon">🏆</span><span>MODE : LIGUE</span>`;
+    }
+}
+
+function toggleMode() {
+    G.selectedMode = G.selectedMode === 'league' ? 'zombie' : 'league';
+    updateModeUI();
+}
+
 
 /* =============================================
    CHARACTER SELECTION
@@ -665,12 +684,25 @@ function getCharacterWithUpgrades(charKey, playerData) {
 }
 
 /* =============================================
-   LANCEMENT DU JEU (DIRECT → ZOMBIE)
+   LANCEMENT DU JEU (MODE SELECTION)
    ============================================= */
-document.getElementById('play-btn').addEventListener('click', () => {
-    G.gameMode = 'zombie';
-    startZombieMode();
-});
+const modeBtn = document.getElementById('mode-btn');
+if (modeBtn) {
+    modeBtn.addEventListener('click', toggleMode);
+}
+
+const playMainBtn = document.getElementById('play-main-btn');
+if (playMainBtn) {
+    playMainBtn.addEventListener('click', () => {
+        if (G.selectedMode === 'league') {
+            startLeagueMatchmaking();
+            return;
+        }
+
+        G.gameMode = 'zombie';
+        startZombieMode();
+    });
+}
 
 /* =============================================
    ZOMBIE MODE
