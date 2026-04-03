@@ -6,11 +6,11 @@
    LIGUES
    ============================================= */
 const LEAGUES = {
-    bronze: { name: 'Bronze', min: 0, max: 99, color: '#CD7F32' },
-    silver: { name: 'Argent', min: 100, max: 299, color: '#C0C0C0' },
-    gold: { name: 'Or', min: 300, max: 599, color: '#FFD700' },
-    platinum: { name: 'Platine', min: 600, max: 999, color: '#E5E4E2' },
-    diamond: { name: 'Diamant', min: 1000, max: Infinity, color: '#B9F2FF' }
+    bronze: { name: 'Bronze', min: 0, max: 500, color: '#CD7F32' },
+    silver: { name: 'Argent', min: 500, max: 1000, color: '#C0C0C0' },
+    gold: { name: 'Or', min: 1000, max: 2500, color: '#FFD700' },
+    platinum: { name: 'Platine', min: 2500, max: 5000, color: '#E5E4E2' },
+    diamond: { name: 'Diamant', min: 5000, max: Infinity, color: '#B9F2FF' }
 };
 
 function getLeague(trophies) {
