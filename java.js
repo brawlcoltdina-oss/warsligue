@@ -1641,9 +1641,12 @@ function renderLB(players, mode = 'trophies') {
         const div   = document.createElement('div');
         div.className = 'leaderboard-item' + (isMe ? ' is-me' : '');
 
-        const displayValue = mode === 'zombie'
-            ? `${(p.bestZombieTime || 0)}s`
-            : `🏆 ${p.trophies||0}`;
+        let displayValue;
+        if (mode === 'zombie') {
+            displayValue = `🏆 ${p.trophies||0} | ${(p.bestZombieTime || 0)}s`;
+        } else {
+            displayValue = `🏆 ${p.trophies||0}`;
+        }
 
         div.innerHTML =
             `<span class="lb-rank ${rankCls[i]||''}">${i+1}</span>` +
