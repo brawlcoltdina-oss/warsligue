@@ -269,24 +269,36 @@ async function renderFriendsList(friends) {
     for (const friend of friends) {
         let trophies = 0;
         let code = '—';
+        let fullData = null;
         try {
             const doc = await FSDB.collection('players').doc(friend.uid).get();
             if (doc.exists) {
-                trophies = doc.data().trophies || 0;
-                code     = doc.data().friendCode || '—';
+                fullData = { id: doc.id, ...doc.data() };
+                trophies = fullData.trophies || 0;
+                code     = fullData.friendCode || '—';
             }
         } catch (_) {}
 
         const card = document.createElement('div');
         card.className = 'friend-card';
         card.innerHTML = `
-            <div class="friend-avatar">${friend.username[0].toUpperCase()}</div>
+            <div class="friend-avatar clickable" data-uid="${friend.uid}" title="Voir profil">${friend.username[0].toUpperCase()}</div>
             <div class="friend-info">
                 <div class="friend-name">${friend.username}</div>
                 <div class="friend-meta">🏆 ${trophies} trophées • #${code}</div>
             </div>
             <button class="btn-remove-friend" data-uid="${friend.uid}" title="Retirer">🗑</button>
         `;
+
+        // ✅ Clic sur avatar → ouvre la carte de profil
+        const avatarEl = card.querySelector('.friend-avatar');
+        avatarEl.style.cursor = 'pointer';
+        avatarEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (typeof openProfileCardByUID === 'function') {
+                openProfileCardByUID(friend.uid, fullData);
+            }
+        });
 
         card.querySelector('.btn-remove-friend').addEventListener('click', (e) => {
             removeFriend(e.currentTarget.dataset.uid, friend.username);
@@ -310,7 +322,6 @@ async function removeFriend(targetUid, targetUsername) {
         console.error('❌ removeFriend:', e);
     }
 }
-
 /* =============================================
    BADGE NOTIFICATION
    ============================================= */

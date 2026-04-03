@@ -1600,6 +1600,8 @@ async function showLeaderboard(mode = currentLbMode) {
 
     if (lbCache[mode] && (Date.now() - lbCacheTime[mode]) < LB_TTL) {
         renderLB(lbCache[mode], mode);
+        // ✅ Avatars cliquables depuis le cache
+        patchLeaderboardClickable(lbCache[mode]);
         return;
     }
 
@@ -1615,6 +1617,8 @@ async function showLeaderboard(mode = currentLbMode) {
         lbCache[mode]     = list;
         lbCacheTime[mode] = Date.now();
         renderLB(list, mode);
+        // ✅ Avatars cliquables après chargement
+        patchLeaderboardClickable(list);
     } catch (e) {
         console.error('❌ LB:', e);
     }
@@ -1648,13 +1652,34 @@ function renderLB(players, mode = 'trophies') {
             displayValue = `🏆 ${p.trophies||0}`;
         }
 
+        // ✅ Avatar avec cursor pointer et data-uid pour le clic profil
         div.innerHTML =
             `<span class="lb-rank ${rankCls[i]||''}">${i+1}</span>` +
-            `<div class="lb-avatar">${(p.username||'?')[0].toUpperCase()}</div>` +
+            `<div class="lb-avatar clickable" data-uid="${p.id}" title="Voir profil">${(p.username||'?')[0].toUpperCase()}</div>` +
             `<span class="lb-name">${p.username||'Joueur'}${isMe?' (Vous)':''}</span>` +
             `<span class="lb-trophies">${displayValue}</span>`;
         ul.appendChild(div);
     });
+}
+
+// ✅ Rendre les avatars du leaderboard cliquables (ouvre la carte de profil)
+function patchLeaderboardClickable(players) {
+    setTimeout(() => {
+        document.querySelectorAll('#leaderboard-list .lb-avatar[data-uid]').forEach((el, i) => {
+            // Éviter double-bind
+            if (el.dataset.patched) return;
+            el.dataset.patched = '1';
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const uid = el.dataset.uid;
+                const playerData = players.find(p => p.id === uid);
+                if (typeof openProfileCardByUID === 'function') {
+                    openProfileCardByUID(uid, playerData || null);
+                }
+            });
+        });
+    }, 60);
 }
 
 /* =============================================

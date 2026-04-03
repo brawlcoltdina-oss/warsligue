@@ -1,0 +1,648 @@
+/* ========================================
+   WARSLIGUE — profile-card.css
+   Système de carte de combat (Brawl Stars style)
+   ======================================== */
+
+/* ===== MODAL PROFIL ===== */
+#profile-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#profile-modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+.profile-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(12px);
+    cursor: pointer;
+}
+
+.profile-modal-content {
+    position: relative;
+    z-index: 1;
+    width: 92%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 28px;
+    background: linear-gradient(160deg, #1A1A2E 0%, #0F0F1E 100%);
+    border: 2px solid rgba(255, 51, 102, 0.3);
+    box-shadow:
+        0 0 60px rgba(255, 51, 102, 0.2),
+        0 30px 80px rgba(0, 0, 0, 0.7);
+    animation: profileSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes profileSlideIn {
+    0% { opacity: 0; transform: scale(0.85) translateY(20px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ===== HERO BANNER ===== */
+.profile-banner {
+    position: relative;
+    height: 130px;
+    border-radius: 26px 26px 0 0;
+    overflow: hidden;
+    background: linear-gradient(135deg, #FF3366, #6C5CE7);
+}
+
+.profile-banner-pattern {
+    position: absolute;
+    inset: 0;
+    background-image:
+        repeating-linear-gradient(45deg,
+            rgba(255,255,255,0.04) 0px,
+            rgba(255,255,255,0.04) 1px,
+            transparent 1px,
+            transparent 20px
+        ),
+        repeating-linear-gradient(-45deg,
+            rgba(255,255,255,0.04) 0px,
+            rgba(255,255,255,0.04) 1px,
+            transparent 1px,
+            transparent 20px
+        );
+}
+
+.profile-banner-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 30% 50%, rgba(255, 51, 102, 0.5) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 50%, rgba(108, 92, 231, 0.5) 0%, transparent 60%);
+}
+
+/* Bouton fermer */
+.profile-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.profile-close-btn:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    transform: rotate(90deg) scale(1.1);
+}
+
+/* ===== AVATAR SECTION ===== */
+.profile-avatar-section {
+    position: relative;
+    padding: 0 1.8rem 0;
+    margin-top: -50px;
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.profile-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.profile-avatar-ring {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    padding: 4px;
+    box-shadow: 0 0 30px rgba(255, 51, 102, 0.5), 0 8px 20px rgba(0,0,0,0.5);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+}
+
+.profile-avatar-ring:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 45px rgba(255, 51, 102, 0.7), 0 8px 20px rgba(0,0,0,0.5);
+}
+
+.profile-avatar-ring:hover .profile-avatar-edit {
+    opacity: 1;
+}
+
+.profile-avatar-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1A1A2E, #0F0F1E);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: 900;
+    color: white;
+    overflow: hidden;
+    position: relative;
+}
+
+.profile-avatar-edit {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: white;
+    gap: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.profile-avatar-edit-icon {
+    font-size: 1.3rem;
+}
+
+/* Badge de ligue sur l'avatar */
+.profile-league-badge {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FFD700, #ff9800);
+    border: 2px solid #1A1A2E;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.profile-name-section {
+    flex: 1;
+    padding-bottom: 0.4rem;
+    min-width: 0;
+}
+
+.profile-username {
+    font-family: 'Bungee', cursive;
+    font-size: 1.4rem;
+    color: white;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.profile-friend-code {
+    font-size: 0.78rem;
+    color: var(--gray-text);
+    margin-top: 0.3rem;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.05em;
+}
+
+.profile-league-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border: 1.5px solid;
+}
+
+/* ===== STATS GRID ===== */
+.profile-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    padding: 1.2rem 1.8rem 0;
+}
+
+.profile-stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1rem 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    border-radius: 16px 16px 0 0;
+}
+
+.profile-stat-card.trophies::before { background: linear-gradient(90deg, #FFD700, #ff9800); }
+.profile-stat-card.zombie::before   { background: linear-gradient(90deg, #00e676, #00bcd4); }
+.profile-stat-card.rank::before     { background: linear-gradient(90deg, #6C5CE7, #a29bfe); }
+.profile-stat-card.games::before    { background: linear-gradient(90deg, #FF3366, #fd79a8); }
+
+.profile-stat-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 51, 102, 0.3);
+    transform: translateY(-2px);
+}
+
+.profile-stat-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+}
+
+.profile-stat-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.profile-stat-value {
+    font-family: 'Bungee', cursive;
+    font-size: 1.4rem;
+    color: white;
+    line-height: 1;
+}
+
+.profile-stat-label {
+    font-size: 0.7rem;
+    color: var(--gray-text);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.3rem;
+    font-weight: 700;
+}
+
+/* ===== PERSONNAGE FAVORI ===== */
+.profile-char-section {
+    padding: 1.2rem 1.8rem 0;
+}
+
+.profile-section-title {
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--gray-text);
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.profile-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+}
+
+.profile-char-display {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1.5px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 1rem 1.2rem;
+}
+
+.profile-char-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    border: 2.5px solid rgba(255,255,255,0.3);
+    flex-shrink: 0;
+    box-shadow: 0 0 20px currentColor;
+}
+
+.profile-char-info { flex: 1; }
+
+.profile-char-name {
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: white;
+}
+
+.profile-char-rarity {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.2rem;
+}
+
+.profile-char-stats-mini {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+.profile-char-stat-mini {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.78rem;
+    color: var(--gray-text);
+    font-weight: 600;
+}
+
+/* ===== BOUTONS D'ACTION (vu par autres) ===== */
+.profile-actions {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1.2rem 1.8rem 1.8rem;
+}
+
+.profile-action-btn {
+    flex: 1;
+    padding: 0.85rem;
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.25s ease;
+    letter-spacing: 0.03em;
+}
+
+.profile-action-btn.primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    box-shadow: 0 6px 20px rgba(255, 51, 102, 0.35);
+}
+
+.profile-action-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(255, 51, 102, 0.5);
+}
+
+.profile-action-btn.secondary {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--light-text);
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+}
+
+.profile-action-btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 51, 102, 0.4);
+}
+
+/* ===== SECTION PP (Photo de profil) ===== */
+.profile-pp-edit-section {
+    padding: 0 1.8rem 1.8rem;
+}
+
+.profile-pp-title {
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--gray-text);
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.profile-pp-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+}
+
+.profile-pp-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.6rem;
+}
+
+.profile-pp-option {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2.5px solid transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.profile-pp-option:hover {
+    transform: scale(1.15);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.profile-pp-option.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(255, 51, 102, 0.3), 0 0 20px rgba(255, 51, 102, 0.4);
+    transform: scale(1.1);
+}
+
+.profile-pp-option.selected::after {
+    content: '✓';
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 16px;
+    height: 16px;
+    background: var(--primary);
+    border-radius: 50%;
+    font-size: 0.55rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 900;
+    border: 1.5px solid #0F0F1E;
+}
+
+/* PP spéciales (personnages débloqués) */
+.profile-pp-option.char-pp {
+    padding: 4px;
+    border-radius: 50%;
+}
+
+.profile-pp-option.char-pp img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 50%;
+}
+
+.profile-pp-option.locked-pp {
+    opacity: 0.35;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+.profile-pp-option.locked-pp:hover {
+    transform: none;
+}
+
+/* Save PP button */
+.profile-pp-save {
+    width: 100%;
+    margin-top: 0.9rem;
+    padding: 0.9rem;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    font-weight: 800;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.25s ease;
+    box-shadow: 0 6px 20px rgba(255, 51, 102, 0.3);
+}
+
+.profile-pp-save:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(255, 51, 102, 0.5);
+}
+
+/* ===== FEEDBACK TOAST ===== */
+.profile-toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: rgba(26, 26, 46, 0.95);
+    border: 1.5px solid rgba(255, 51, 102, 0.4);
+    border-radius: 14px;
+    padding: 0.9rem 1.6rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: white;
+    z-index: 9999;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.profile-toast.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+/* ===== AVATAR EN LEADERBOARD (cliquable) ===== */
+.lb-avatar.clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.lb-avatar.clickable:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 15px rgba(255, 51, 102, 0.5);
+}
+
+/* ===== AVATAR FRIEND (cliquable) ===== */
+.friend-avatar.clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.friend-avatar.clickable:hover {
+    transform: scale(1.12);
+    box-shadow: 0 0 15px rgba(108, 92, 231, 0.6);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 520px) {
+    .profile-modal-content {
+        width: 96%;
+        border-radius: 22px;
+    }
+
+    .profile-banner {
+        height: 110px;
+    }
+
+    .profile-avatar-ring {
+        width: 84px;
+        height: 84px;
+    }
+
+    .profile-avatar-inner {
+        font-size: 2.4rem;
+    }
+
+    .profile-username {
+        font-size: 1.2rem;
+    }
+
+    .profile-stats-grid {
+        padding: 1rem 1.2rem 0;
+        gap: 0.6rem;
+    }
+
+    .profile-stat-value {
+        font-size: 1.2rem;
+    }
+
+    .profile-char-section,
+    .profile-pp-edit-section,
+    .profile-actions {
+        padding-left: 1.2rem;
+        padding-right: 1.2rem;
+    }
+
+    .profile-avatar-section {
+        padding: 0 1.2rem 0;
+    }
+
+    .profile-pp-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
