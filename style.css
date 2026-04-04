@@ -1190,6 +1190,12 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
     font-weight: 800; font-size: .88rem;
 }
 .lb-name { flex:1; font-weight: 600; font-size: .92rem; }
+.lb-see-profile {
+    font-size: 0.72rem;
+    color: var(--gray-text);
+    margin-right: 0.7rem;
+    white-space: nowrap;
+}
 .lb-trophies { color: var(--accent); font-weight: 700; font-size: .92rem; }
 
 /* ===== SCROLLBAR ===== */

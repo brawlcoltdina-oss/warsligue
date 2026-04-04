@@ -336,30 +336,48 @@ function closeProfileCard() {
    ============================================= */
 function renderProfileAvatar(pp, username) {
     const inner = document.getElementById('profile-avatar-inner');
-    if (!inner) return;
+    applyAvatarToElement(inner, pp, username, { letterSize: '3rem', emojiSize: '3rem' });
+}
 
-    if (!pp) {
-        // Lettre par défaut
-        inner.textContent = (username || '?')[0].toUpperCase();
-        inner.style.fontSize = '3rem';
-        return;
-    }
-
+function getAvatarMarkup(pp, username) {
+    const defaultLetter = (username || '?')[0].toUpperCase();
+    if (!pp) return defaultLetter;
     const option = PP_OPTIONS.find(o => o.id === pp);
+    if (!option) return defaultLetter;
+    if (option.type === 'emoji') return option.value;
+    const char = CHARACTERS[option.charKey];
+    if (!char) return defaultLetter;
+    return `<img src="${char.image}" alt="${char.name}" style="width:80%;height:80%;object-fit:contain;border-radius:50%;">`;
+}
+
+function applyAvatarToElement(el, pp, username, opts = {}) {
+    if (!el) return;
+    const option = pp ? PP_OPTIONS.find(o => o.id === pp) : null;
+    const defaultLetter = (username || '?')[0].toUpperCase();
+
+    el.style.fontSize = '';
+    el.style.lineHeight = '';
+
     if (!option) {
-        inner.textContent = (username || '?')[0].toUpperCase();
+        el.innerHTML = '';
+        el.textContent = defaultLetter;
+        el.style.fontSize = opts.letterSize || '1.2rem';
         return;
     }
 
     if (option.type === 'emoji') {
-        inner.textContent = option.value;
-        inner.style.fontSize = '3rem';
+        el.innerHTML = '';
+        el.textContent = option.value;
+        el.style.fontSize = opts.emojiSize || '1.2rem';
     } else if (option.type === 'char') {
         const char = CHARACTERS[option.charKey];
         if (char) {
-            inner.innerHTML = `<img src="${char.image}" alt="${char.name}" style="width:80%;height:80%;object-fit:contain;">`;
+            el.innerHTML = `<img src="${char.image}" alt="${char.name}" style="width:80%;height:80%;object-fit:contain;border-radius:50%;">`;
+            el.style.fontSize = '';
         } else {
-            inner.textContent = (username || '?')[0].toUpperCase();
+            el.innerHTML = '';
+            el.textContent = defaultLetter;
+            el.style.fontSize = opts.letterSize || '1.2rem';
         }
     }
 }
@@ -443,8 +461,9 @@ async function saveProfilePP() {
         if (G.playerData) G.playerData.profilePP = profileSelectedPP;
         profileCardData.profilePP = profileSelectedPP;
 
-        // Mettre à jour l'avatar du menu principal
+        // Mettre à jour l'avatar du menu principal et dans les listes visibles
         updateMainMenuAvatar();
+        refreshVisibleAvatars(G.user.uid, profileSelectedPP, G.playerData?.username);
 
         showProfileToast('✅ Photo de profil sauvegardée !');
     } catch (e) {
@@ -459,26 +478,15 @@ async function saveProfilePP() {
 function updateMainMenuAvatar() {
     const avatarEl = document.getElementById('player-avatar');
     if (!avatarEl || !G.playerData) return;
+    applyAvatarToElement(avatarEl, G.playerData.profilePP, G.playerData.username, { letterSize: '1.5rem', emojiSize: '1.5rem' });
+}
 
-    const pp = G.playerData.profilePP;
-    if (!pp) {
-        avatarEl.textContent = (G.playerData.username || '?')[0].toUpperCase();
-        avatarEl.style.fontSize = '';
-        return;
-    }
-
-    const option = PP_OPTIONS.find(o => o.id === pp);
-    if (!option) { avatarEl.textContent = (G.playerData.username || '?')[0].toUpperCase(); return; }
-
-    if (option.type === 'emoji') {
-        avatarEl.textContent = option.value;
-        avatarEl.style.fontSize = '1.5rem';
-    } else if (option.type === 'char') {
-        const char = CHARACTERS[option.charKey];
-        if (char) {
-            avatarEl.innerHTML = `<img src="${char.image}" alt="${char.name}" style="width:85%;height:85%;object-fit:contain;">`;
-        }
-    }
+function refreshVisibleAvatars(uid, pp, username) {
+    if (!uid) return;
+    const selector = `#leaderboard-list .lb-avatar[data-uid=\"${uid}\"], #friends-list .friend-avatar[data-uid=\"${uid}\"]`;
+    document.querySelectorAll(selector).forEach(el => {
+        applyAvatarToElement(el, pp, username, { letterSize: '1rem', emojiSize: '1.1rem' });
+    });
 }
 
 /* =============================================
@@ -528,11 +536,26 @@ function patchLeaderboardClickable(players) {
     setTimeout(() => {
         document.querySelectorAll('#leaderboard-list .lb-avatar').forEach((el, i) => {
             if (!players[i]) return;
+            if (el.dataset.patched) return;
+            el.dataset.patched = '1';
             el.classList.add('clickable');
             el.title = 'Voir profil';
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
                 openProfileCardByUID(players[i].id, players[i]);
+            });
+        });
+
+        document.querySelectorAll('#leaderboard-list .lb-see-profile').forEach(el => {
+            if (el.dataset.patched) return;
+            el.dataset.patched = '1';
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const parent = el.closest('.leaderboard-item');
+                const uid = parent?.querySelector('.lb-avatar')?.dataset.uid;
+                const playerData = players.find(p => p.id === uid);
+                if (uid) openProfileCardByUID(uid, playerData || null);
             });
         });
     }, 50);

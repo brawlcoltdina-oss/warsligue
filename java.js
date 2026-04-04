@@ -1652,11 +1652,16 @@ function renderLB(players, mode = 'trophies') {
             displayValue = `🏆 ${p.trophies||0}`;
         }
 
+        const avatarHtml = typeof getAvatarMarkup === 'function'
+            ? getAvatarMarkup(p.profilePP, p.username)
+            : (p.username||'?')[0].toUpperCase();
+
         // ✅ Avatar avec cursor pointer et data-uid pour le clic profil
         div.innerHTML =
             `<span class="lb-rank ${rankCls[i]||''}">${i+1}</span>` +
-            `<div class="lb-avatar clickable" data-uid="${p.id}" title="Voir profil">${(p.username||'?')[0].toUpperCase()}</div>` +
+            `<div class="lb-avatar clickable" data-uid="${p.id}" title="Voir profil">${avatarHtml}</div>` +
             `<span class="lb-name">${p.username||'Joueur'}${isMe?' (Vous)':''}</span>` +
+            `<span class="lb-see-profile">Voir profil</span>` +
             `<span class="lb-trophies">${displayValue}</span>`;
         ul.appendChild(div);
     });
@@ -1675,6 +1680,21 @@ function patchLeaderboardClickable(players) {
                 const uid = el.dataset.uid;
                 const playerData = players.find(p => p.id === uid);
                 if (typeof openProfileCardByUID === 'function') {
+                    openProfileCardByUID(uid, playerData || null);
+                }
+            });
+        });
+
+        document.querySelectorAll('#leaderboard-list .lb-see-profile').forEach(el => {
+            if (el.dataset.patched) return;
+            el.dataset.patched = '1';
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const parent = el.closest('.leaderboard-item');
+                const uid = parent?.querySelector('.lb-avatar')?.dataset.uid;
+                const playerData = players.find(p => p.id === uid);
+                if (uid && typeof openProfileCardByUID === 'function') {
                     openProfileCardByUID(uid, playerData || null);
                 }
             });

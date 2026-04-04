@@ -296,6 +296,20 @@
     margin-top: 0.2rem;
 }
 
+.friend-view-profile {
+    margin-top: 0.18rem;
+    font-size: 0.75rem;
+    color: var(--light-text);
+    opacity: 0.8;
+    cursor: pointer;
+    transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.friend-view-profile:hover {
+    opacity: 1;
+    color: #ffffff;
+}
+
 .btn-remove-friend {
     background: transparent;
     border: none;

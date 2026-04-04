@@ -279,13 +279,18 @@ async function renderFriendsList(friends) {
             }
         } catch (_) {}
 
+        const avatarHtml = typeof getAvatarMarkup === 'function'
+            ? getAvatarMarkup(fullData?.profilePP || friend.profilePP, fullData?.username || friend.username)
+            : (friend.username[0] || '?').toUpperCase();
+
         const card = document.createElement('div');
         card.className = 'friend-card';
         card.innerHTML = `
-            <div class="friend-avatar clickable" data-uid="${friend.uid}" title="Voir profil">${friend.username[0].toUpperCase()}</div>
+            <div class="friend-avatar clickable" data-uid="${friend.uid}" title="Voir profil">${avatarHtml}</div>
             <div class="friend-info">
-                <div class="friend-name">${friend.username}</div>
+                <div class="friend-name">${fullData?.username || friend.username}</div>
                 <div class="friend-meta">🏆 ${trophies} trophées • #${code}</div>
+                <div class="friend-view-profile">Voir profil</div>
             </div>
             <button class="btn-remove-friend" data-uid="${friend.uid}" title="Retirer">🗑</button>
         `;
@@ -299,6 +304,17 @@ async function renderFriendsList(friends) {
                 openProfileCardByUID(friend.uid, fullData);
             }
         });
+
+        const viewProfileEl = card.querySelector('.friend-view-profile');
+        if (viewProfileEl) {
+            viewProfileEl.style.cursor = 'pointer';
+            viewProfileEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (typeof openProfileCardByUID === 'function') {
+                    openProfileCardByUID(friend.uid, fullData);
+                }
+            });
+        }
 
         card.querySelector('.btn-remove-friend').addEventListener('click', (e) => {
             removeFriend(e.currentTarget.dataset.uid, friend.username);
