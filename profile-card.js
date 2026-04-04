@@ -98,10 +98,10 @@ function initProfileCard() {
                         </div>
                     </div>
                     <div class="profile-stat-card games">
-                        <span class="profile-stat-icon">🎮</span>
+                        <span class="profile-stat-icon">🧟</span>
                         <div class="profile-stat-info">
                             <div class="profile-stat-value" id="profile-stat-games">0</div>
-                            <div class="profile-stat-label">Parties jouées</div>
+                            <div class="profile-stat-label">Zombies tués</div>
                         </div>
                     </div>
                 </div>
@@ -253,8 +253,7 @@ async function openProfileCard(data, isOwn = false) {
     document.getElementById('profile-stat-trophies').textContent = data.trophies || 0;
     document.getElementById('profile-stat-zombie').textContent =
         data.bestZombieTime ? data.bestZombieTime + 's' : '—';
-    document.getElementById('profile-stat-games').textContent =
-        (data.totalMatches || 0) + (data.zombieSessions || 0);
+    document.getElementById('profile-stat-games').textContent = data.totalZombiesKilled || 0;
 
     /* Rang classement (on cherche dans le cache LB si dispo) */
     document.getElementById('profile-stat-rank').textContent = '#—';

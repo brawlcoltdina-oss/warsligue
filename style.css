@@ -1081,6 +1081,23 @@ button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; trans
 .hud-center { display: flex; flex-direction: column; align-items: center; }
 .timer-label { font-size: .68rem; text-transform: uppercase; color: var(--gray-text); letter-spacing: .1em; }
 .timer { font-family: 'Bungee', cursive; font-size: 1.6rem; color: var(--accent); line-height: 1.2; }
+.kill-counter {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    margin-top: .5rem;
+}
+.kill-label {
+    color: rgba(255,255,255,.7);
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+.kill-value {
+    font-family: 'Bungee', cursive;
+    font-size: 1.1rem;
+    color: var(--accent);
+}
 .timer.warning { color: var(--hp-danger); animation: timerPulse 1s ease infinite; }
 
 #game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }

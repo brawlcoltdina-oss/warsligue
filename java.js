@@ -713,6 +713,7 @@ async function startZombieMode() {
 
     G.matchEnded         = false;
     G.gameTime           = 0;
+    G.zombieKills        = 0;
     G.zombies            = [];
     G.projectiles        = [];
     G.particles          = [];
@@ -726,7 +727,14 @@ async function startZombieMode() {
     G.matchId = 'zombie_' + Date.now();
 
     initGame();
+    updateZombieKillsUI();
     console.log('🧟 Mode Zombie démarré !');
+}
+
+function updateZombieKillsUI() {
+    const el = document.getElementById('zombie-kills');
+    if (!el) return;
+    el.textContent = G.zombieKills != null ? G.zombieKills : 0;
 }
 
 /* =============================================
@@ -865,7 +873,8 @@ async function saveZombieResults(survivalTime, gold, trophy) {
     try {
         const updates = {
             gold:     (G.playerData.gold || 0) + gold,
-            trophies: (G.playerData.trophies || 0) + trophy
+            trophies: (G.playerData.trophies || 0) + trophy,
+            totalZombiesKilled: (G.playerData.totalZombiesKilled || 0) + (G.zombieKills || 0)
         };
 
         const currentBest = G.playerData.bestZombieTime || 0;
@@ -875,9 +884,11 @@ async function saveZombieResults(survivalTime, gold, trophy) {
         }
 
         await FSDB.collection('players').doc(G.user.uid).update(updates);
+        G.playerData.totalZombiesKilled = updates.totalZombiesKilled;
+        
         await FSDB.collection('players').doc(G.user.uid).collection('zombie_sessions').add({
             timestamp:    firebase.firestore.FieldValue.serverTimestamp(),
-            survivalTime, goldEarned: gold, trophyEarned: trophy
+            survivalTime, goldEarned: gold, trophyEarned: trophy, zombiesKilled: G.zombieKills || 0
         });
 
         // ✅ Intégration Passe Brawl : gain d'XP basé sur le temps de survie
@@ -1286,7 +1297,11 @@ function gameLoop() {
                 spawnHitParticles(proj.x, proj.y, proj.type);
                 flashHit(proj.type);
                 G.projectiles.splice(i, 1);
-                if (zombie.hp <= 0) G.zombies.splice(z, 1);
+                if (zombie.hp <= 0) {
+                    G.zombies.splice(z, 1);
+                    G.zombieKills = (G.zombieKills || 0) + 1;
+                    updateZombieKillsUI();
+                }
                 break;
             }
         }
